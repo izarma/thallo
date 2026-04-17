@@ -5,8 +5,6 @@
 # PROJECT-THALLO
 
 <em></em>
-<img src="/assets/ui/start_button.png" width="10%" align="left" style="margin-right: 15px">
-
 <!-- BADGES -->
 <!-- local repository, no metadata badges. -->
 
