@@ -61,19 +61,6 @@ impl IconRef {
     }
 }
 
-pub(crate) fn icon_for_filetype(ft: &FileType, icons: &IconTextures, is_locked: bool) -> IconRef {
-    let sheet = match ft {
-        FileType::Folder(_) => icons.folder,
-        FileType::Image(..) => icons.png,
-        FileType::TextFile(_) => icons.txt,
-    };
-    if is_locked {
-        IconRef::locked(sheet)
-    } else {
-        IconRef::unlocked(sheet)
-    }
-}
-
 /// Renders a scrollable icon grid and returns the interaction that occurred this frame.
 ///
 /// `icon_size` is the **display** size (square side length) in current window pixels.
@@ -161,4 +148,17 @@ pub fn show_icon_grid(
         });
 
     action
+}
+
+pub(crate) fn icon_for_filetype(ft: &FileType, icons: &IconTextures, is_locked: bool) -> IconRef {
+    let sheet = match ft {
+        FileType::Folder(_) => icons.folder,
+        FileType::Image(..) => icons.png,
+        FileType::TextFile(_) => icons.txt,
+    };
+    if is_locked {
+        IconRef::locked(sheet)
+    } else {
+        IconRef::unlocked(sheet)
+    }
 }

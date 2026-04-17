@@ -6,7 +6,9 @@ pub mod audio;
 pub mod design_scale;
 pub mod file_system;
 pub mod screens;
+pub mod scripted_events;
 pub mod system_apps;
+pub mod terminal_commands;
 pub mod window_manager;
 
 pub(super) fn plugin(app: &mut App) {

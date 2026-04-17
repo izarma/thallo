@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 mod interaction;
-mod palette;
+pub mod palette;
 pub mod widgets;
 
 pub(super) fn plugin(app: &mut App) {

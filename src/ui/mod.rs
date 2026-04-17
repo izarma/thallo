@@ -4,15 +4,12 @@ use bevy::{
 };
 use bevy_egui::EguiGlobalSettings;
 
+mod apps;
 pub mod menus;
 mod theme;
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((
-        theme::plugin,
-        menus::plugin,
-        // applications::plugin,
-    ));
+    app.add_plugins((theme::plugin, menus::plugin, apps::plugin));
     app.add_systems(Startup, spawn_cursor);
 }
 
