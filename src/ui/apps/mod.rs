@@ -10,20 +10,25 @@ use crate::{
             Screen,
             desktop::{DesktopTextures, IconTextures},
         },
-        scripted_events::ScriptedEvent,
+        scripted_events::{Dialogues, ScriptedEvent},
         system_apps::{Applications, OpenAppEvent},
         terminal_commands::execute_command,
         window_manager::{OpenWindows, ToggleMinimizeEvent, WindowAction},
     },
     ui::{
         apps::{
-            file_explorer::show_file_explorer, image_viewer::show_image_viewer,
-            terminal::show_terminal, text_viewer::show_text_viewer, unlocker::show_unlocker,
+            chatbox::{commit_player_line, show_chatbox},
+            file_explorer::show_file_explorer,
+            image_viewer::show_image_viewer,
+            terminal::show_terminal,
+            text_viewer::show_text_viewer,
+            unlocker::show_unlocker,
         },
         theme::widgets::title_bar::{TitleBarAction, title_bar},
     },
 };
 
+mod chatbox;
 mod file_explorer;
 mod image_viewer;
 mod terminal;
@@ -37,6 +42,7 @@ pub(super) fn plugin(app: &mut App) {
             .run_if(
                 in_state(Screen::Desktop)
                     .and(resource_exists::<FsHierarchy>)
+                    .and(resource_exists::<Dialogues>)
                     .and(resource_exists::<IconTextures>),
             )
             .in_set(UiPassSystems::Render),
@@ -53,6 +59,7 @@ fn show_open_windows(
     mut contexts: EguiContexts,
     mut open_windows: ResMut<OpenWindows>,
     mut vfs: ResMut<FsHierarchy>,
+    mut dialogues: ResMut<Dialogues>,
     icons: Res<IconTextures>,
     tex: Res<DesktopTextures>,
     scale: Res<DesignScale>,
@@ -157,7 +164,11 @@ fn show_open_windows(
                                 }
                                 WindowAction::None
                             }
-                            Applications::Chatbox { input } => {
+                            Applications::Chatbox {
+                                input,
+                                state,
+                                displayed,
+                            } => {
                                 ui.painter().image(
                                     tex.chatbox,
                                     ui.max_rect(),
@@ -167,6 +178,19 @@ fn show_open_windows(
                                     ),
                                     egui::Color32::WHITE,
                                 );
+                                let send = show_chatbox(
+                                    ui,
+                                    displayed,
+                                    state,
+                                    input,
+                                    &mut dialogues,
+                                    dt,
+                                    &scale,
+                                    is_focused,
+                                );
+                                if send {
+                                    commit_player_line(displayed, input, state, &mut dialogues);
+                                }
                                 WindowAction::None
                             }
                             Applications::Decrypter {

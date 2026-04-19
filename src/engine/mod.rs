@@ -26,6 +26,7 @@ pub(super) fn plugin(app: &mut App) {
         screens::plugin,
         design_scale::plugin,
         window_manager::plugin,
+        scripted_events::plugin,
     ));
 }
 

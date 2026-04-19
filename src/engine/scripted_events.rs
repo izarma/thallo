@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::engine::{
     asset_tracking::LoadResource,
     screens::Screen,
-    system_apps::{Applications, OpenAppEvent},
+    system_apps::{Applications, ChatBoxState, OpenAppEvent},
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -62,6 +62,8 @@ fn process_scripted_event(
                     name: "Chat".to_string(),
                     app_type: Applications::Chatbox {
                         input: String::new(),
+                        state: ChatBoxState::AnonTyping { elapsed: 0.0 },
+                        displayed: Vec::new(),
                     },
                 });
             }
@@ -122,4 +124,16 @@ impl FromWorld for MinigameAssets {
             hack_1_disk: assets.load("minigames/corpus/hack_1_disks-sheet.png"),
         }
     }
+}
+
+#[derive(Resource)]
+pub struct Dialogues {
+    pub lines: Vec<DialogueLine>,
+    pub index: usize,
+}
+
+/// `speaker: false` = anon, `speaker: true` = player.
+pub struct DialogueLine {
+    pub speaker: bool,
+    pub text: String,
 }

@@ -36,6 +36,8 @@ pub enum Applications {
     },
     Chatbox {
         input: String,
+        state: ChatBoxState,
+        displayed: Vec<(bool, String)>, // need to understand this better
     },
 }
 
@@ -78,4 +80,11 @@ impl OpenAppEvent {
             app_type,
         }
     }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ChatBoxState {
+    AnonTyping { elapsed: f32 },
+    PlayerReady { chars_revealed: usize },
+    Done,
 }

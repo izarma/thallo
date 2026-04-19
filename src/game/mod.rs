@@ -1,20 +1,21 @@
 use bevy::prelude::*;
 use bevy_egui::{
     EguiContexts, EguiTextureHandle,
-    egui::{self},
+    egui::{self, TextureId},
 };
 
 use crate::engine::{
     asset_tracking::LoadResource,
     file_system::{FileType, FsHierarchy, FsNode, HOME_PATH, LockType, NodeMeta},
     screens::Screen,
+    scripted_events::{DialogueLine, Dialogues},
 };
 
 pub(super) fn plugin(app: &mut App) {
     app.load_resource::<Act1Assets>();
     app.add_systems(
         OnEnter(Screen::Desktop),
-        setup_act1_fs_hierarchy
+        setup_act1_stuffs
             .run_if(resource_exists::<Act1Assets>)
             .run_if(not(resource_exists::<FsHierarchy>)),
     );
@@ -43,12 +44,13 @@ impl FromWorld for Act1Assets {
 //     Act2,
 // }
 
-fn setup_act1_fs_hierarchy(
+fn setup_act1_stuffs(
     mut contexts: EguiContexts,
     assets: Res<Act1Assets>,
     images: Res<Assets<Image>>,
     mut cmd: Commands,
 ) {
+    // File hierarchy
     let size = images
         .get(&assets.omega)
         .map(|img| {
@@ -57,6 +59,282 @@ fn setup_act1_fs_hierarchy(
         })
         .unwrap_or(egui::Vec2::splat(64.0));
     let omega_tex = contexts.add_image(EguiTextureHandle::Weak(assets.omega.id()));
+    cmd.insert_resource(build_fs_hierarchy(omega_tex, size));
+    // Optionally also insert Act1Textures here if other systems need it:
+    // cmd.insert_resource(Act1Textures {
+    //     omega: (omega_tex, size),
+    // });
+
+    // Dialogues
+    cmd.insert_resource(build_dialogues());
+}
+
+fn build_dialogues() -> Dialogues {
+    Dialogues {
+        lines: vec![
+            DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },
+            //fake
+            DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },DialogueLine {
+                speaker: false, // anon
+                text: "Hey, you’re in?".to_string(),
+            },
+            DialogueLine {
+                speaker: true, // player
+                text: "i think so. what are we looking for exactly?".to_string(),
+            },
+            DialogueLine {
+                speaker: false,
+                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
+            },
+
+        ],
+        index: 0,
+    }
+}
+
+fn build_fs_hierarchy(omega_tex: TextureId, size: egui::Vec2) -> FsHierarchy {
     let mut desktop = FsNode::folder("Desktop");
     desktop
         .push_child(FsNode::text_file(
@@ -122,10 +400,5 @@ fn setup_act1_fs_hierarchy(
     home.push_child(FsNode::folder("Reports")).ok();
     home.push_child(FsNode::folder("Logs")).ok();
     home.push_child(FsNode::folder("Downloads")).ok();
-
-    cmd.insert_resource(FsHierarchy { root: home });
-    // Optionally also insert Act1Textures here if other systems need it:
-    // cmd.insert_resource(Act1Textures {
-    //     omega: (omega_tex, size),
-    // });
+    FsHierarchy { root: home }
 }
