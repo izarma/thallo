@@ -73,7 +73,7 @@ fn show_open_windows(
             .last()
             .map(|layer| layer.id)
     });
-    let window_frame = egui::Frame::NONE; //egui::Frame::window(&ctx.style()).inner_margin(egui::Margin::ZERO);
+    let window_frame = egui::Frame::NONE;
     let window_size = scale.px(WINDOW_DESIGN_W, WINDOW_DESIGN_H);
     let dt = time.delta_secs();
     //let paused = active_mg.checkpoint.is_some();
@@ -252,14 +252,14 @@ fn show_open_windows(
                 cmd.trigger(event);
             }
             WindowAction::UnlockAttempt { path } => {
-                let password = if let Applications::Unlocker { path, input } = &entry.event.app_type
-                {
-                    input.clone()
-                } else {
-                    String::new()
-                };
+                let password =
+                    if let Applications::Unlocker { path: _, input } = &entry.event.app_type {
+                        input.clone()
+                    } else {
+                        String::new()
+                    };
 
-                if vfs.unlock_with_password(path.as_str(), &password).is_ok() {
+                if vfs.unlock_with_password(&path, &password).is_ok() {
                     if path.file_name() == "omega.png" {
                         cmd.trigger(ScriptedEvent::Unlock1);
                     }
@@ -268,14 +268,14 @@ fn show_open_windows(
                         entry.event.app_type = fresh_event.app_type;
                     }
                 } else {
-                    if let Applications::Unlocker { path, input } = &mut entry.event.app_type {
+                    if let Applications::Unlocker { path: _, input } = &mut entry.event.app_type {
                         input.clear();
                     }
                     debug!("Failed to unlock node at {}", path);
                 }
             }
             WindowAction::DecryptComplete { path } => {
-                if vfs.crack_encrypted(path.as_str()).is_ok() {
+                if vfs.crack_encrypted(&path).is_ok() {
                     if let Some(node) = vfs.get_node(&path) {
                         let fresh_event = OpenAppEvent::from_fsnode(node, path);
                         entry.event.app_type = fresh_event.app_type;

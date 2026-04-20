@@ -37,13 +37,6 @@ impl FromWorld for Act1Assets {
     }
 }
 
-// #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, Reflect)]
-// pub enum Acts {
-//     #[default]
-//     Act1,
-//     Act2,
-// }
-
 fn setup_act1_stuffs(
     mut contexts: EguiContexts,
     assets: Res<Act1Assets>,
@@ -60,10 +53,6 @@ fn setup_act1_stuffs(
         .unwrap_or(egui::Vec2::splat(64.0));
     let omega_tex = contexts.add_image(EguiTextureHandle::Weak(assets.omega.id()));
     cmd.insert_resource(build_fs_hierarchy(omega_tex, size));
-    // Optionally also insert Act1Textures here if other systems need it:
-    // cmd.insert_resource(Act1Textures {
-    //     omega: (omega_tex, size),
-    // });
 
     // Dialogues
     cmd.insert_resource(build_dialogues());
@@ -72,263 +61,20 @@ fn setup_act1_stuffs(
 fn build_dialogues() -> Dialogues {
     Dialogues {
         lines: vec![
-            DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },
-            //fake
-            DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },DialogueLine {
-                speaker: false, // anon
-                text: "Hey, you’re in?".to_string(),
-            },
-            DialogueLine {
-                speaker: true, // player
-                text: "i think so. what are we looking for exactly?".to_string(),
-            },
-            DialogueLine {
-                speaker: false,
-                text: "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string(),
-            },
-
+            DialogueLine::new(false, "Hey, you’re in?".to_string()),
+            DialogueLine::new(true, "i think so. what are we looking for exactly?".to_string()),
+            DialogueLine::new(false, "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string()),
+            DialogueLine::new(true, "isnt this terminal connected to the rest?".to_string()),
+            DialogueLine::new(false, "Nope. Cut the lines before you came in. Said to them that the terminal needs some maintenance and some more bullshit. Are you sure nobody saw you on the way?".to_string()),
+            DialogueLine::new(true, "yeah. i should be safe for an hour or so.".to_string()),
+            DialogueLine::new(false, "Good. Still, make it quick. I suggest giving a look at some files related to your sector.".to_string()),
+            DialogueLine::new(true, "god i hate plants.".to_string()),
+            DialogueLine::new(false, "No shit, but I still need for you to read through them carefully. I overlooked the desktop and there should be a few encrypted folders. You know whose terminal is this? Can be connected to that.".to_string()),
+            DialogueLine::new(true, "no fucking clue. probably some french nerd i was talking to the other day. he is awful…".to_string()),
+            DialogueLine::new(false, "HAHAHAH, YOU MEAN PIERRE??".to_string()),
+            DialogueLine::new(true, "yeah he thinks im into him. poor guy doesnt even have a clue we used him.".to_string()),
+            DialogueLine::new(false, "Hahaha, yeah. OK, let’s stop fooling around. Your terminal is only connected to mine, so I can see what you’re doing. I’ll try to help along the way.".to_string()),
+            DialogueLine::new(true, "yup.".to_string()),
         ],
         index: 0,
     }
@@ -372,7 +118,7 @@ fn build_fs_hierarchy(omega_tex: TextureId, size: egui::Vec2) -> FsHierarchy {
         .ok();
     desktop.push_child(personal_folder).ok();
     desktop
-        .push_child(FsNode::encrypted_folder("[CORRUPTED]", "event_key_gamma"))
+        .push_child(FsNode::encrypted_folder("[CORRUPTED]"))
         .ok();
 
     // Image file on the desktop

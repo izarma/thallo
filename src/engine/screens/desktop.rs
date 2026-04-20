@@ -41,9 +41,9 @@ pub struct DesktopAssets {
     #[dependency]
     pub wallpaper: Handle<Image>,
     #[dependency]
-    pub main_cursor: Handle<Image>,
+    pub main_cursor: Handle<Image>, // for later getting it back
     #[dependency]
-    pub load_cursor: Handle<Image>,
+    pub load_cursor: Handle<Image>, // when doing startup/encrypted opens
     #[dependency]
     pub folder_minimized: Handle<Image>,
     #[dependency]

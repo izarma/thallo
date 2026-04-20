@@ -27,7 +27,7 @@ const COLOR_STATUS_BG: Color32 = Color32::from_rgb(30, 5, 5);
 
 pub fn show_chatbox(
     ui: &mut egui::Ui,
-    displayed: &mut Vec<(bool, String)>,
+    displayed: &mut Vec<DialogueLine>,
     state: &mut ChatBoxState,
     input: &mut String,
     dialogues: &mut Dialogues,
@@ -58,7 +58,7 @@ pub fn show_chatbox(
 // State machine
 
 fn tick(
-    displayed: &mut Vec<(bool, String)>,
+    displayed: &mut Vec<DialogueLine>,
     state: &mut ChatBoxState,
     input: &mut String,
     dialogues: &mut Dialogues,
@@ -78,7 +78,7 @@ fn tick(
 
             let char_count = line.text.chars().count();
             if (*elapsed * TYPING_SPEED) as usize >= char_count {
-                displayed.push((false, line.text.clone()));
+                displayed.push(DialogueLine::new(false, line.text.clone()));
                 dialogues.index += 1;
                 *state = next_state(&dialogues.lines, dialogues.index);
                 input.clear();
@@ -128,7 +128,7 @@ fn next_state(lines: &[DialogueLine], index: usize) -> ChatBoxState {
 fn render_messages(
     ui: &mut egui::Ui,
     rect: egui::Rect,
-    displayed: &[(bool, String)],
+    displayed: &[DialogueLine],
     state: &ChatBoxState,
     scale: &DesignScale,
 ) {
@@ -160,8 +160,8 @@ fn render_messages(
                 .show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = 8.0;
 
-                    for (is_player, text) in displayed {
-                        bubble(ui, text, *is_player, &font, &font_sm);
+                    for DialogueLine { speaker, text } in displayed {
+                        bubble(ui, text, *speaker, &font, &font_sm);
                     }
                 });
 
@@ -268,13 +268,13 @@ fn render_status_bar(
 
 /// Called by `show_chatbox` to finalise the player's turn after Send/Enter.
 pub fn commit_player_line(
-    displayed: &mut Vec<(bool, String)>,
+    displayed: &mut Vec<DialogueLine>,
     input: &mut String,
     state: &mut ChatBoxState,
     dialogues: &mut Dialogues,
 ) {
     if let Some(line) = dialogues.lines.get(dialogues.index) {
-        displayed.push((true, line.text.clone()));
+        displayed.push(DialogueLine::new(true, line.text.clone()));
     }
     input.clear();
     dialogues.index += 1;
@@ -306,11 +306,7 @@ fn bubble(ui: &mut egui::Ui, text: &str, is_player: bool, font: &FontId, font_sm
                     .color(name_color)
                     .strong(),
             );
-            ui.label(
-                RichText::new(format!("{}", text))
-                    .font(font.clone())
-                    .color(COLOR_PLAYER),
-            );
+            ui.label(RichText::new(text).font(font.clone()).color(COLOR_PLAYER));
         });
     });
 }

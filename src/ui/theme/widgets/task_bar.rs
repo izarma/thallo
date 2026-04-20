@@ -1,7 +1,9 @@
 use bevy_egui::egui;
 
 use crate::ui::theme::{
-    palette::{BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, BUTTON_TEXT_COLOR},
+    palette::{
+        BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, BUTTON_TEXT_COLOR, apply_button_theme,
+    },
     widgets::primitives::truncate_label,
 };
 
@@ -119,11 +121,7 @@ pub fn taskbar_group_button(
             } else {
                 BUTTON_TEXT_COLOR
             };
-            let visuals = ui.visuals_mut();
-            visuals.widgets.inactive.weak_bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.hovered.weak_bg_fill = BUTTON_HOVERED_BG;
-            visuals.widgets.active.weak_bg_fill = BUTTON_ACTIVE_BG;
-
+            apply_button_theme(ui);
             let btn = ui.add_sized(
                 [ui.available_width(), 20.0],
                 egui::Button::new(egui::RichText::new(row_label).size(14.0).color(text_color))
@@ -142,11 +140,7 @@ pub fn taskbar_group_button(
 /// A slim full-width menu row button, suitable for start-menu style lists.
 /// Returns the [`egui::Response`] so the caller can check `.clicked()`.
 pub fn menu_item(ui: &mut egui::Ui, text: impl Into<String>) -> egui::Response {
-    let visuals = ui.visuals_mut();
-    visuals.widgets.inactive.weak_bg_fill = egui::Color32::TRANSPARENT;
-    visuals.widgets.hovered.weak_bg_fill = BUTTON_HOVERED_BG;
-    visuals.widgets.active.weak_bg_fill = BUTTON_ACTIVE_BG;
-
+    apply_button_theme(ui);
     ui.add_sized(
         [ui.available_width(), 20.0],
         egui::Button::new(

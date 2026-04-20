@@ -133,7 +133,14 @@ pub struct Dialogues {
 }
 
 /// `speaker: false` = anon, `speaker: true` = player.
+#[derive(Debug, PartialEq, Clone)]
 pub struct DialogueLine {
     pub speaker: bool,
     pub text: String,
+}
+
+impl DialogueLine {
+    pub fn new(speaker: bool, text: String) -> Self {
+        Self { speaker, text }
+    }
 }

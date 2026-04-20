@@ -28,17 +28,18 @@ use crate::{
 };
 
 const DESKTOP_COLS: usize = 6;
+const MAX_UNGROUPED_WINDOWS: usize = 7;
 
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<TaskBarState>().add_systems(
         EguiPrimaryContextPass,
-        ((show_desktop, show_task_bar, show_settings_egui_window)
+        (show_desktop, show_task_bar, show_settings_egui_window)
             .chain()
             .run_if(
                 in_state(Screen::Desktop)
                     .and(resource_exists::<FsHierarchy>)
                     .and(resource_exists::<DesktopAssets>),
-            ),)
+            )
             .in_set(UiPassSystems::Render),
     );
 }
@@ -49,16 +50,15 @@ fn show_desktop(
     desktop_tex: Res<DesktopTextures>,
     vfs: Res<FsHierarchy>,
     scale: Res<DesignScale>,
-    mut cache: Local<DesktopCache>,
+    mut cache: Local<Vec<DesktopItem>>,
     mut selected: Local<Option<String>>,
     mut cmd: Commands,
 ) -> Result {
     // Only build items if vfs has changed
-    if vfs.is_changed() || cache.items.is_empty() {
-        cache.items = build_desktop_items(&vfs);
+    if vfs.is_changed() || cache.is_empty() {
+        *cache = build_desktop_items(&vfs);
     }
     let grid_items: Vec<IconGridItem> = cache
-        .items
         .iter()
         .map(|item| IconGridItem {
             id: item.event.name.clone(),
@@ -92,7 +92,7 @@ fn show_desktop(
                     *selected = if id.is_empty() { None } else { Some(id) };
                 }
                 IconGridAction::Opened(id) => {
-                    if let Some(event) = cache.items.iter().find(|e| e.event.name == id) {
+                    if let Some(event) = cache.iter().find(|e| e.event.name == id) {
                         cmd.trigger(event.event.clone());
                     }
                 }
@@ -122,11 +122,6 @@ fn build_desktop_items(vfs: &FsHierarchy) -> Vec<DesktopItem> {
         .unwrap_or_default()
 }
 
-#[derive(Default)]
-struct DesktopCache {
-    items: Vec<DesktopItem>,
-}
-
 struct DesktopItem {
     event: OpenAppEvent,
     file_type: FileType,
@@ -134,7 +129,7 @@ struct DesktopItem {
 }
 
 #[derive(Resource, Default)]
-pub struct TaskBarState {
+struct TaskBarState {
     pub settings_open: bool,
 }
 
@@ -184,7 +179,6 @@ fn show_task_bar(
                         });
                     }
                     if menu_item(ui, "File Explorer").clicked() {
-                        info!("File Explorer button clicked");
                         cmd.trigger(OpenAppEvent {
                             name: HOME_PATH.to_string(),
                             app_type: Applications::FileExplorer {
@@ -201,7 +195,7 @@ fn show_task_bar(
                     }
                 });
                 let total = open_windows.windows.len();
-                if total > 7 {
+                if total > MAX_UNGROUPED_WINDOWS {
                     let mut groups: Vec<(
                         &'static str,
                         Vec<GroupedWindow>,
@@ -210,7 +204,7 @@ fn show_task_bar(
                     )> = Vec::new();
 
                     for entry in open_windows.windows.iter() {
-                        let key = app_type_key(&entry.event.app_type);
+                        let key = entry.event.app_type.type_name();
                         if let Some(g) = groups.iter_mut().find(|g| g.0 == key) {
                             if !entry.is_minimized {
                                 g.2 = true; // at least one visible → group is active
@@ -331,16 +325,4 @@ fn show_settings_egui_window(
 
     state.settings_open = is_open; // propagate close from × button
     Ok(())
-}
-
-fn app_type_key(app: &Applications) -> &'static str {
-    match app {
-        Applications::FileExplorer { .. } => "Explorer",
-        Applications::TextViewer { .. } => "Text Viewer",
-        Applications::ImageViewer { .. } => "Image Viewer",
-        Applications::Unlocker { .. } => "Locked",
-        Applications::Decrypter { .. } => "Encrypted",
-        Applications::Terminal { .. } => "Terminal",
-        Applications::Chatbox { .. } => "Chatbox",
-    }
 }

@@ -1,7 +1,7 @@
 use bevy_egui::egui;
 
 use crate::ui::theme::{
-    palette::{BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, BUTTON_TEXT_COLOR},
+    palette::{BUTTON_TEXT_COLOR, apply_button_theme},
     widgets::primitives::empty_state,
 };
 
@@ -18,13 +18,7 @@ pub(super) fn show_unlocker(ui: &mut egui::Ui, input: &mut String) -> bool {
                 .hint_text("Enter password")
                 .desired_width(180.0);
             ui.add(field);
-            {
-                let visuals = ui.visuals_mut();
-                visuals.widgets.inactive.weak_bg_fill = BUTTON_BG;
-                visuals.widgets.hovered.weak_bg_fill = BUTTON_HOVERED_BG;
-                visuals.widgets.active.weak_bg_fill = BUTTON_ACTIVE_BG;
-            }
-
+            apply_button_theme(ui);
             let btn = ui.add_sized(
                 [60.0, 18.0],
                 egui::Button::new(

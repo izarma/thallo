@@ -19,9 +19,7 @@ pub fn title_bar(ui: &mut egui::Ui, title: &str, scale: &DesignScale) -> TitleBa
         egui::Rect::from_min_size(r.min, egui::vec2(r.width(), bar_height))
     };
     let bg_slot = ui.painter().add(egui::Shape::Noop);
-    let bar_response = ui.allocate_rect(bar_rect, egui::Sense::hover());
-    let _ = bar_response;
-
+    ui.allocate_rect(bar_rect, egui::Sense::hover());
     // Check if this window's layer is the top-most layer in its order stack
     let is_active = ui.ctx().memory(|mem| {
         mem.layer_ids()
@@ -70,13 +68,6 @@ pub fn title_bar(ui: &mut egui::Ui, title: &str, scale: &DesignScale) -> TitleBa
     if minimize_button(ui, min_rect, is_active, &scale).clicked() {
         action = TitleBarAction::Minimize;
     }
-    // let sep_color = ui.visuals().widgets.noninteractive.bg_stroke.color;
-    // ui.painter().hline(
-    //     bar_rect.x_range(),
-    //     bar_rect.bottom(),
-    //     egui::Stroke::new(1.0, sep_color),
-    // );
-
     action
 }
 
