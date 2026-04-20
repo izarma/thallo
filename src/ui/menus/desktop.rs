@@ -1,33 +1,44 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 
 use crate::{
     engine::{
         UiPassSystems,
         design_scale::DesignScale,
-        file_system::{DESKTOP_PATH, FileType, FsHierarchy, FsPath},
+        file_system::{DESKTOP_PATH, FileType, FsHierarchy, FsPath, HOME_PATH},
         screens::{
             Screen,
             desktop::{DesktopAssets, DesktopTextures, IconTextures},
         },
-        system_apps::OpenAppEvent,
+        system_apps::{Applications, OpenAppEvent},
+        window_manager::{OpenWindows, ToggleMinimizeEvent},
     },
-    ui::theme::widgets::icon_grid::{
-        ICON_DESIGN_SIZE, IconGridAction, IconGridItem, icon_for_filetype, show_icon_grid,
+    ui::{
+        apps::settings_menu::show_settings_window,
+        theme::widgets::{
+            icon_grid::{
+                ICON_DESIGN_SIZE, IconGridAction, IconGridItem, icon_for_filetype, show_icon_grid,
+            },
+            task_bar::{
+                GroupedWindow, START_DESIGN_W, TAB_DESIGN_H, TAB_DESIGN_W, TASKBAR_DESIGN_H,
+                menu_item, taskbar_app_button, taskbar_group_button,
+            },
+        },
     },
 };
 
 const DESKTOP_COLS: usize = 6;
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
+    app.init_resource::<TaskBarState>().add_systems(
         EguiPrimaryContextPass,
-        (show_desktop.run_if(
-            in_state(Screen::Desktop)
-                .and(resource_exists::<FsHierarchy>)
-                .and(resource_exists::<DesktopAssets>),
-        ),)
-            //.before(task_bar::show_task_bar)
+        ((show_desktop, show_task_bar, show_settings_egui_window)
+            .chain()
+            .run_if(
+                in_state(Screen::Desktop)
+                    .and(resource_exists::<FsHierarchy>)
+                    .and(resource_exists::<DesktopAssets>),
+            ),)
             .in_set(UiPassSystems::Render),
     );
 }
@@ -122,9 +133,214 @@ struct DesktopItem {
     is_locked: bool,
 }
 
-// fn show_task_bar() -> Result {
-//     let bar_h = scale.py(TASKBAR_DESIGN_H);
-//     let start_size = scale.px(START_DESIGN_W, TASKBAR_DESIGN_H);
-//     let tab_size = scale.px(TAB_DESIGN_W, TAB_DESIGN_H);
-//     Ok(())
-// }
+#[derive(Resource, Default)]
+pub struct TaskBarState {
+    pub settings_open: bool,
+}
+
+fn show_task_bar(
+    mut contexts: EguiContexts,
+    open_windows: Res<OpenWindows>,
+    desktop_tex: Option<Res<DesktopTextures>>,
+    scale: Res<DesignScale>,
+    mut cmd: Commands,
+    mut state: ResMut<TaskBarState>,
+    mut app_exit: MessageWriter<AppExit>,
+) -> Result {
+    let bar_h = scale.py(TASKBAR_DESIGN_H);
+    let start_size = scale.px(START_DESIGN_W, TASKBAR_DESIGN_H);
+    let tab_size = scale.px(TAB_DESIGN_W, TAB_DESIGN_H);
+
+    egui::TopBottomPanel::bottom("Task Bar")
+        .exact_height(bar_h)
+        .frame(
+            egui::Frame::new()
+                .fill(egui::Color32::from_rgba_unmultiplied(0, 0, 0, 120))
+                .inner_margin(egui::Margin::symmetric(0, 0)),
+        )
+        .show_separator_line(false)
+        .show(contexts.ctx_mut()?, |ui| {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                let start_clicked = if let Some(dt) = desktop_tex.as_deref() {
+                    let sized = egui::load::SizedTexture::new(dt.start, start_size);
+                    ui.add(egui::Button::image(sized).frame(false))
+                } else {
+                    ui.button("Start") // graceful fallback while asset loads
+                };
+
+                // start menu logic
+                egui::Popup::menu(&start_clicked).show(|ui| {
+                    ui.set_min_width(200.0);
+                    ui.heading("Start Menu");
+                    if menu_item(ui, "Terminal").clicked() {
+                        cmd.trigger(OpenAppEvent {
+                            name: "Terminal".to_string(),
+                            app_type: Applications::Terminal {
+                                cwd: FsPath::new("Home"),
+                                history: Vec::new(),
+                                input: String::new(),
+                            },
+                        });
+                    }
+                    if menu_item(ui, "File Explorer").clicked() {
+                        info!("File Explorer button clicked");
+                        cmd.trigger(OpenAppEvent {
+                            name: HOME_PATH.to_string(),
+                            app_type: Applications::FileExplorer {
+                                path: FsPath::new(HOME_PATH),
+                                selected_item: None,
+                            },
+                        });
+                    }
+                    if menu_item(ui, "Settings").clicked() {
+                        state.settings_open = true;
+                    }
+                    if menu_item(ui, "Shut Down").clicked() {
+                        app_exit.write(AppExit::Success);
+                    }
+                });
+                let total = open_windows.windows.len();
+                if total > 7 {
+                    let mut groups: Vec<(
+                        &'static str,
+                        Vec<GroupedWindow>,
+                        bool,
+                        Option<egui::TextureId>,
+                    )> = Vec::new();
+
+                    for entry in open_windows.windows.iter() {
+                        let key = app_type_key(&entry.event.app_type);
+                        if let Some(g) = groups.iter_mut().find(|g| g.0 == key) {
+                            if !entry.is_minimized {
+                                g.2 = true; // at least one visible → group is active
+                            }
+                            g.1.push(GroupedWindow {
+                                id: entry.id,
+                                name: entry.event.name.clone(),
+                                is_minimized: entry.is_minimized,
+                            });
+                        } else {
+                            let icon = desktop_tex
+                                .as_deref()
+                                .map(|dt| dt.icon_for_app(&entry.event.app_type));
+                            groups.push((
+                                key,
+                                vec![GroupedWindow {
+                                    id: entry.id,
+                                    name: entry.event.name.clone(),
+                                    is_minimized: entry.is_minimized,
+                                }],
+                                !entry.is_minimized,
+                                icon,
+                            ));
+                        }
+                    }
+
+                    for (key, windows, is_active, icon) in &groups {
+                        if windows.len() == 1 {
+                            // Single window — render as a normal tab using its actual name
+                            if taskbar_app_button(ui, &windows[0].name, *is_active, *icon, tab_size)
+                                .clicked()
+                            {
+                                cmd.trigger(ToggleMinimizeEvent { id: windows[0].id });
+                            }
+                        } else {
+                            // Multiple windows of the same type — render grouped with popup
+                            if let Some(window_id) =
+                                taskbar_group_button(ui, *key, *is_active, *icon, tab_size, windows)
+                            {
+                                cmd.trigger(ToggleMinimizeEvent { id: window_id });
+                            }
+                        }
+                    }
+                } else {
+                    for entry in open_windows.windows.iter() {
+                        let is_active = !entry.is_minimized;
+                        let icon = desktop_tex
+                            .as_deref()
+                            .map(|dt| dt.icon_for_app(&entry.event.app_type));
+                        if taskbar_app_button(ui, &entry.event.name, is_active, icon, tab_size)
+                            .clicked()
+                        {
+                            cmd.trigger(ToggleMinimizeEvent { id: entry.id });
+                        }
+                    }
+                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.add_space(6.0);
+
+                    // Clock label
+                    let now = chrono::Local::now();
+                    let time_str = now.format("%H:%M").to_string();
+                    ui.label(
+                        egui::RichText::new(time_str)
+                            .size((13.0 * (tab_size.y / TASKBAR_DESIGN_H)).max(8.0))
+                            .color(egui::Color32::WHITE),
+                    );
+
+                    ui.add_space(4.0);
+                });
+            })
+        });
+    Ok(())
+}
+
+fn show_settings_egui_window(
+    mut contexts: EguiContexts,
+    mut state: ResMut<TaskBarState>,
+    mut global_volume: ResMut<GlobalVolume>,
+    mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
+) -> Result {
+    if !state.settings_open {
+        return Ok(());
+    }
+    let Ok(mut win) = primary_window.single_mut() else {
+        return Ok(());
+    };
+    let mut window_mode = win.mode.clone();
+    let mut resolution = win.resolution.clone();
+    let mut decorations = win.decorations;
+
+    let mut is_open = state.settings_open;
+    egui::Window::new("Settings")
+        .open(&mut is_open) // the × button sets this to false
+        .resizable(false)
+        .collapsible(false)
+        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+        .show(contexts.ctx_mut()?, |ui| {
+            ui.set_min_width(280.0);
+            show_settings_window(
+                ui,
+                &mut global_volume,
+                &mut window_mode,
+                &mut resolution,
+                &mut decorations,
+            );
+        });
+
+    if win.mode != window_mode {
+        win.mode = window_mode;
+    }
+    if win.resolution != resolution {
+        win.resolution = resolution;
+    }
+    if win.decorations != decorations {
+        win.decorations = decorations;
+    }
+
+    state.settings_open = is_open; // propagate close from × button
+    Ok(())
+}
+
+fn app_type_key(app: &Applications) -> &'static str {
+    match app {
+        Applications::FileExplorer { .. } => "Explorer",
+        Applications::TextViewer { .. } => "Text Viewer",
+        Applications::ImageViewer { .. } => "Image Viewer",
+        Applications::Unlocker { .. } => "Locked",
+        Applications::Decrypter { .. } => "Encrypted",
+        Applications::Terminal { .. } => "Terminal",
+        Applications::Chatbox { .. } => "Chatbox",
+    }
+}

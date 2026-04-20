@@ -31,6 +31,7 @@ use crate::{
 mod chatbox;
 mod file_explorer;
 mod image_viewer;
+pub mod settings_menu;
 mod terminal;
 mod text_viewer;
 mod unlocker;

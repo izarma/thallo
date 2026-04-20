@@ -15,13 +15,10 @@ const STATUS_RATIO: f32 = 0.345;
 /// Width of the right contact-panel sidebar (logo area).
 const SIDEBAR_RATIO: f32 = 0.252;
 
-// ── Typography animation ──────────────────────────────────────────────────────
-
 /// Seconds between each character appearing for anon's message.
 const TYPING_SPEED: f32 = 18.0; // chars / second
 
 // Colours - match the dark-red / monochrome chatbox palette
-
 const COLOR_ANON: Color32 = Color32::from_rgb(200, 80, 80);
 const COLOR_PLAYER: Color32 = Color32::from_rgb(180, 180, 180);
 const COLOR_META: Color32 = Color32::from_rgb(110, 90, 90);
