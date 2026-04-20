@@ -110,7 +110,7 @@ impl FsNode {
             },
         }
     }
-    pub fn encrypted_folder(name: &str, key: &str) -> Self {
+    pub fn encrypted_folder(name: &str) -> Self {
         Self {
             name: name.to_string(),
             file_type: FileType::Folder(Vec::new()),
@@ -133,7 +133,7 @@ impl FsNode {
                 Ok(())
             }
             Some(LockType::Password(_)) => Err(FsError::WrongPassword),
-            Some(LockType::Encrypted { .. }) => Err(FsError::NeedsKey),
+            Some(LockType::Encrypted { .. }) => Err(FsError::IsEncrypted),
             None => Ok(()), // already open
         }
     }
@@ -213,10 +213,10 @@ impl FsHierarchy {
     }
 
     /// Walk a path and return a mutable reference — needed for unlocking nodes
-    pub fn get_node_mut(&mut self, path: &str) -> Option<&mut FsNode> {
+    pub fn get_node_mut(&mut self, path: &FsPath) -> Option<&mut FsNode> {
         let mut current = &mut self.root;
-        for segment in path.split('/').filter(|s| !s.is_empty()) {
-            if segment == current.name.as_str() {
+        for segment in path.segments() {
+            if segment == current.name {
                 continue;
             }
             current = current.get_child_mut(segment)?;
@@ -225,7 +225,7 @@ impl FsHierarchy {
     }
 
     /// Unlock a node at a path using a password
-    pub fn unlock_with_password(&mut self, path: &str, password: &str) -> Result<(), FsError> {
+    pub fn unlock_with_password(&mut self, path: &FsPath, password: &str) -> Result<(), FsError> {
         self.get_node_mut(path)
             .ok_or(FsError::NotFound)?
             .try_unlock_password(password)
@@ -233,7 +233,7 @@ impl FsHierarchy {
 
     /// Force-unlock an encrypted node once the player finishes the decryption
     /// progress sequence.
-    pub fn crack_encrypted(&mut self, path: &str) -> Result<(), FsError> {
+    pub fn crack_encrypted(&mut self, path: &FsPath) -> Result<(), FsError> {
         self.get_node_mut(path)
             .ok_or(FsError::NotFound)?
             .force_decrypt()
@@ -247,10 +247,8 @@ pub enum FsError {
     IsAFolder,
     NotReadable,
     WrongPassword,
-    WrongKey,
     NeedsPassword,
-    NeedsKey,
-    Locked,
+    IsEncrypted,
 }
 
 impl std::fmt::Display for FsError {
@@ -261,10 +259,8 @@ impl std::fmt::Display for FsError {
             FsError::IsAFolder => write!(f, "Is a directory"),
             FsError::NotReadable => write!(f, "Cannot read binary file as text"),
             FsError::WrongPassword => write!(f, "Incorrect password"),
-            FsError::WrongKey => write!(f, "Incorrect decryption key"),
             FsError::NeedsPassword => write!(f, "This node requires a password"),
-            FsError::NeedsKey => write!(f, "This node requires a decryption key"),
-            FsError::Locked => write!(f, "Access denied"),
+            FsError::IsEncrypted => write!(f, "This node requires a decryption key"),
         }
     }
 }

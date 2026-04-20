@@ -1,7 +1,10 @@
 use bevy::ecs::event::Event;
 use bevy_egui::egui::{TextureId, Vec2};
 
-use crate::engine::file_system::{FileType, FsNode, FsPath, LockType};
+use crate::engine::{
+    file_system::{FileType, FsNode, FsPath, LockType},
+    scripted_events::DialogueLine,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Applications {
@@ -36,7 +39,23 @@ pub enum Applications {
     },
     Chatbox {
         input: String,
+        state: ChatBoxState,
+        displayed: Vec<DialogueLine>, // need to understand this better
     },
+}
+
+impl Applications {
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Applications::FileExplorer { .. } => "Explorer",
+            Applications::TextViewer { .. } => "Text Viewer",
+            Applications::ImageViewer { .. } => "Image Viewer",
+            Applications::Unlocker { .. } => "Locked",
+            Applications::Decrypter { .. } => "Encrypted",
+            Applications::Terminal { .. } => "Terminal",
+            Applications::Chatbox { .. } => "Chatbox",
+        }
+    }
 }
 
 #[derive(Event, Debug, Clone)]
@@ -68,8 +87,8 @@ impl OpenAppEvent {
                     selected_item: None,
                 },
                 FileType::Image(tex, size) => Applications::ImageViewer {
-                    texture_id: tex.clone(),
-                    size: size.clone(),
+                    texture_id: *tex,
+                    size: *size,
                 },
             },
         };
@@ -78,4 +97,11 @@ impl OpenAppEvent {
             app_type,
         }
     }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ChatBoxState {
+    AnonTyping { elapsed: f32 },
+    PlayerReady { chars_revealed: usize },
+    Done,
 }

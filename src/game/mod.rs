@@ -1,20 +1,21 @@
 use bevy::prelude::*;
 use bevy_egui::{
     EguiContexts, EguiTextureHandle,
-    egui::{self},
+    egui::{self, TextureId},
 };
 
 use crate::engine::{
     asset_tracking::LoadResource,
     file_system::{FileType, FsHierarchy, FsNode, HOME_PATH, LockType, NodeMeta},
     screens::Screen,
+    scripted_events::{DialogueLine, Dialogues},
 };
 
 pub(super) fn plugin(app: &mut App) {
     app.load_resource::<Act1Assets>();
     app.add_systems(
         OnEnter(Screen::Desktop),
-        setup_act1_fs_hierarchy
+        setup_act1_stuffs
             .run_if(resource_exists::<Act1Assets>)
             .run_if(not(resource_exists::<FsHierarchy>)),
     );
@@ -36,19 +37,13 @@ impl FromWorld for Act1Assets {
     }
 }
 
-// #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, Reflect)]
-// pub enum Acts {
-//     #[default]
-//     Act1,
-//     Act2,
-// }
-
-fn setup_act1_fs_hierarchy(
+fn setup_act1_stuffs(
     mut contexts: EguiContexts,
     assets: Res<Act1Assets>,
     images: Res<Assets<Image>>,
     mut cmd: Commands,
 ) {
+    // File hierarchy
     let size = images
         .get(&assets.omega)
         .map(|img| {
@@ -57,6 +52,35 @@ fn setup_act1_fs_hierarchy(
         })
         .unwrap_or(egui::Vec2::splat(64.0));
     let omega_tex = contexts.add_image(EguiTextureHandle::Weak(assets.omega.id()));
+    cmd.insert_resource(build_fs_hierarchy(omega_tex, size));
+
+    // Dialogues
+    cmd.insert_resource(build_dialogues());
+}
+
+fn build_dialogues() -> Dialogues {
+    Dialogues {
+        lines: vec![
+            DialogueLine::new(false, "Hey, you’re in?".to_string()),
+            DialogueLine::new(true, "i think so. what are we looking for exactly?".to_string()),
+            DialogueLine::new(false, "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string()),
+            DialogueLine::new(true, "isnt this terminal connected to the rest?".to_string()),
+            DialogueLine::new(false, "Nope. Cut the lines before you came in. Said to them that the terminal needs some maintenance and some more bullshit. Are you sure nobody saw you on the way?".to_string()),
+            DialogueLine::new(true, "yeah. i should be safe for an hour or so.".to_string()),
+            DialogueLine::new(false, "Good. Still, make it quick. I suggest giving a look at some files related to your sector.".to_string()),
+            DialogueLine::new(true, "god i hate plants.".to_string()),
+            DialogueLine::new(false, "No shit, but I still need for you to read through them carefully. I overlooked the desktop and there should be a few encrypted folders. You know whose terminal is this? Can be connected to that.".to_string()),
+            DialogueLine::new(true, "no fucking clue. probably some french nerd i was talking to the other day. he is awful…".to_string()),
+            DialogueLine::new(false, "HAHAHAH, YOU MEAN PIERRE??".to_string()),
+            DialogueLine::new(true, "yeah he thinks im into him. poor guy doesnt even have a clue we used him.".to_string()),
+            DialogueLine::new(false, "Hahaha, yeah. OK, let’s stop fooling around. Your terminal is only connected to mine, so I can see what you’re doing. I’ll try to help along the way.".to_string()),
+            DialogueLine::new(true, "yup.".to_string()),
+        ],
+        index: 0,
+    }
+}
+
+fn build_fs_hierarchy(omega_tex: TextureId, size: egui::Vec2) -> FsHierarchy {
     let mut desktop = FsNode::folder("Desktop");
     desktop
         .push_child(FsNode::text_file(
@@ -94,7 +118,7 @@ fn setup_act1_fs_hierarchy(
         .ok();
     desktop.push_child(personal_folder).ok();
     desktop
-        .push_child(FsNode::encrypted_folder("[CORRUPTED]", "event_key_gamma"))
+        .push_child(FsNode::encrypted_folder("[CORRUPTED]"))
         .ok();
 
     // Image file on the desktop
@@ -122,10 +146,5 @@ fn setup_act1_fs_hierarchy(
     home.push_child(FsNode::folder("Reports")).ok();
     home.push_child(FsNode::folder("Logs")).ok();
     home.push_child(FsNode::folder("Downloads")).ok();
-
-    cmd.insert_resource(FsHierarchy { root: home });
-    // Optionally also insert Act1Textures here if other systems need it:
-    // cmd.insert_resource(Act1Textures {
-    //     omega: (omega_tex, size),
-    // });
+    FsHierarchy { root: home }
 }

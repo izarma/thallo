@@ -34,11 +34,14 @@ impl Default for DesignScale {
     }
 }
 
+/// Minimum scale on either axis — prevents zero font sizes during minimize/resize.
+const MIN_SCALE: f32 = 0.1;
+
 impl DesignScale {
     pub fn from_window(logical_w: f32, logical_h: f32) -> Self {
         Self {
-            x: logical_w / DESIGN_WIDTH,
-            y: logical_h / DESIGN_HEIGHT,
+            x: (logical_w / DESIGN_WIDTH).max(MIN_SCALE),
+            y: (logical_h / DESIGN_HEIGHT).max(MIN_SCALE),
         }
     }
 

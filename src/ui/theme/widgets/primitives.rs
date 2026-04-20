@@ -2,6 +2,7 @@ use bevy_egui::egui;
 
 use crate::ui::theme::palette::{
     BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, BUTTON_TEXT_COLOR, HEADER_COLOR, LABEL_COLOR,
+    apply_button_theme,
 };
 
 /// Wraps `body` in a vertically-and-horizontally centred [`egui::CentralPanel`]
@@ -48,11 +49,7 @@ pub fn label(ui: &mut egui::Ui, text: impl Into<String>) {
 /// A large rounded button (380 × 80).  Returns the [`egui::Response`] so the
 /// caller can check `.clicked()`, `.hovered()`, etc.
 pub fn button(ui: &mut egui::Ui, text: impl Into<String>) -> egui::Response {
-    let visuals = ui.visuals_mut();
-    visuals.widgets.inactive.weak_bg_fill = BUTTON_BG;
-    visuals.widgets.hovered.weak_bg_fill = BUTTON_HOVERED_BG;
-    visuals.widgets.active.weak_bg_fill = BUTTON_ACTIVE_BG;
-
+    apply_button_theme(ui);
     ui.add_sized(
         [380.0, 80.0],
         egui::Button::new(
