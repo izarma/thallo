@@ -3,7 +3,7 @@ use bevy_egui::egui;
 
 use crate::engine::{
     file_system::FsPath,
-    system_apps::{Applications, OpenAppEvent},
+    system_apps::{Applications, ChatBoxState, OpenAppEvent},
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -29,6 +29,24 @@ impl OpenWindows {
                 .find(|w| matches!(w.event.app_type, Applications::Chatbox { .. }))
             {
                 existing.is_minimized = false; // bring it back up
+
+                // If the chatbox has finished its previous exchange, resume it
+                // with the state carried by the incoming event (AnonTyping).
+                if let (
+                    Applications::Chatbox {
+                        state: existing_state,
+                        ..
+                    },
+                    Applications::Chatbox {
+                        state: new_state, ..
+                    },
+                ) = (&mut existing.event.app_type, &event.app_type)
+                {
+                    if *existing_state == ChatBoxState::Done {
+                        *existing_state = new_state.clone();
+                    }
+                }
+
                 return;
             }
         }

@@ -1,9 +1,6 @@
 use bevy_egui::egui;
 
-use crate::ui::theme::palette::{
-    BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, BUTTON_TEXT_COLOR, HEADER_COLOR, LABEL_COLOR,
-    apply_button_theme,
-};
+use crate::ui::theme::palette::{BUTTON_TEXT_COLOR, HEADER_COLOR, LABEL_COLOR, apply_button_theme};
 
 /// Wraps `body` in a vertically-and-horizontally centred [`egui::CentralPanel`]
 ///

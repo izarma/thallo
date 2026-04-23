@@ -78,6 +78,7 @@ pub enum LockType {
     Encrypted,        // unlocked by game event / specific string
 }
 
+#[allow(dead_code)]
 impl FsNode {
     /// Constructors
     pub fn folder(name: &str) -> Self {

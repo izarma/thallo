@@ -149,16 +149,16 @@ fn cache_icon_textures(mut contexts: EguiContexts, icons: Res<IconAssets>, mut c
 
 fn cache_desktop_textures(
     mut contexts: EguiContexts,
-    assets: Res<DesktopAssets>,
+    d_ass: Res<DesktopAssets>,
     w_ass: Res<WindowAssets>,
     mut cmd: Commands,
 ) {
     let textures = DesktopTextures {
-        wallpaper: contexts.add_image(EguiTextureHandle::Weak(assets.wallpaper.id())),
-        start: contexts.add_image(EguiTextureHandle::Weak(assets.start_btn.id())),
-        folder_minimized: contexts.add_image(EguiTextureHandle::Weak(assets.folder_minimized.id())),
-        txt_minimized: contexts.add_image(EguiTextureHandle::Weak(assets.txt_minimized.id())),
-        png_minimized: contexts.add_image(EguiTextureHandle::Weak(assets.png_minimized.id())),
+        wallpaper: contexts.add_image(EguiTextureHandle::Weak(d_ass.wallpaper.id())),
+        start: contexts.add_image(EguiTextureHandle::Weak(d_ass.start_btn.id())),
+        folder_minimized: contexts.add_image(EguiTextureHandle::Weak(d_ass.folder_minimized.id())),
+        txt_minimized: contexts.add_image(EguiTextureHandle::Weak(d_ass.txt_minimized.id())),
+        png_minimized: contexts.add_image(EguiTextureHandle::Weak(d_ass.png_minimized.id())),
         window: contexts.add_image(EguiTextureHandle::Weak(w_ass.window.id())),
         terminal: contexts.add_image(EguiTextureHandle::Weak(w_ass.terminal.id())),
         chatbox: contexts.add_image(EguiTextureHandle::Weak(w_ass.chatbox.id())),

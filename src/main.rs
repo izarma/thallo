@@ -1,5 +1,9 @@
-use bevy::{log::LogPlugin, prelude::*};
-use bevy_egui::EguiPlugin;
+use bevy::{
+    log::LogPlugin,
+    prelude::*,
+    window::{CursorIcon, CustomCursor, CustomCursorImage},
+};
+use bevy_egui::{EguiGlobalSettings, EguiPlugin};
 use tracing::Level;
 
 mod engine;
@@ -20,7 +24,7 @@ fn main() {
     ))
     // this turns into the default background color
     .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
-    .add_systems(Startup, setup_camera)
+    .add_systems(Startup, (setup_camera, spawn_cursor))
     .run();
 }
 
@@ -46,4 +50,19 @@ fn setup_camera(mut commands: Commands) {
         ..OrthographicProjection::default_2d()
     });
     commands.spawn((Name::new("Camera"), main_camera, projection));
+}
+
+fn spawn_cursor(
+    mut cmd: Commands,
+    window: Single<Entity, With<Window>>,
+    assets: Res<AssetServer>,
+    mut egui_global: ResMut<EguiGlobalSettings>,
+) {
+    //disables egui messing with cursor
+    egui_global.enable_cursor_icon_updates = false;
+    cmd.entity(*window)
+        .insert((CursorIcon::Custom(CustomCursor::Image(CustomCursorImage {
+            handle: assets.load("ui/cursors/cursor.png"),
+            ..default()
+        })),));
 }

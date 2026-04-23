@@ -78,7 +78,7 @@ fn tick(
 
             let char_count = line.text.chars().count();
             if (*elapsed * TYPING_SPEED) as usize >= char_count {
-                displayed.push(DialogueLine::new(false, line.text.clone()));
+                displayed.push(DialogueLine::new(false, &line.text));
                 dialogues.index += 1;
                 *state = next_state(&dialogues.lines, dialogues.index);
                 input.clear();
@@ -274,7 +274,7 @@ pub fn commit_player_line(
     dialogues: &mut Dialogues,
 ) {
     if let Some(line) = dialogues.lines.get(dialogues.index) {
-        displayed.push(DialogueLine::new(true, line.text.clone()));
+        displayed.push(DialogueLine::new(true, &line.text));
     }
     input.clear();
     dialogues.index += 1;

@@ -8,7 +8,7 @@ use crate::engine::{
     asset_tracking::LoadResource,
     file_system::{FileType, FsHierarchy, FsNode, HOME_PATH, LockType, NodeMeta},
     screens::Screen,
-    scripted_events::{DialogueLine, Dialogues},
+    scripted_events::{DialogueLine, Dialogues, FileDialogueTriggers},
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -41,6 +41,7 @@ fn setup_act1_stuffs(
     mut contexts: EguiContexts,
     assets: Res<Act1Assets>,
     images: Res<Assets<Image>>,
+    mut file_triggers: ResMut<FileDialogueTriggers>,
     mut cmd: Commands,
 ) {
     // File hierarchy
@@ -56,28 +57,67 @@ fn setup_act1_stuffs(
 
     // Dialogues
     cmd.insert_resource(build_dialogues());
+    build_act1_file_triggers(&mut file_triggers);
 }
 
 fn build_dialogues() -> Dialogues {
     Dialogues {
         lines: vec![
-            DialogueLine::new(false, "Hey, you’re in?".to_string()),
-            DialogueLine::new(true, "i think so. what are we looking for exactly?".to_string()),
-            DialogueLine::new(false, "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.".to_string()),
-            DialogueLine::new(true, "isnt this terminal connected to the rest?".to_string()),
-            DialogueLine::new(false, "Nope. Cut the lines before you came in. Said to them that the terminal needs some maintenance and some more bullshit. Are you sure nobody saw you on the way?".to_string()),
-            DialogueLine::new(true, "yeah. i should be safe for an hour or so.".to_string()),
-            DialogueLine::new(false, "Good. Still, make it quick. I suggest giving a look at some files related to your sector.".to_string()),
-            DialogueLine::new(true, "god i hate plants.".to_string()),
-            DialogueLine::new(false, "No shit, but I still need for you to read through them carefully. I overlooked the desktop and there should be a few encrypted folders. You know whose terminal is this? Can be connected to that.".to_string()),
-            DialogueLine::new(true, "no fucking clue. probably some french nerd i was talking to the other day. he is awful…".to_string()),
-            DialogueLine::new(false, "HAHAHAH, YOU MEAN PIERRE??".to_string()),
-            DialogueLine::new(true, "yeah he thinks im into him. poor guy doesnt even have a clue we used him.".to_string()),
-            DialogueLine::new(false, "Hahaha, yeah. OK, let’s stop fooling around. Your terminal is only connected to mine, so I can see what you’re doing. I’ll try to help along the way.".to_string()),
-            DialogueLine::new(true, "yup.".to_string()),
+            DialogueLine::new(false, "Hey, you’re in?"), // false is anon
+            DialogueLine::new(true, "i think so. what are we looking for exactly?"), // true is player
+            DialogueLine::new(
+                false,
+                "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.",
+            ),
+            DialogueLine::new(true, "isnt this terminal connected to the rest?"),
+            DialogueLine::new(
+                false,
+                "Nope. Cut the lines before you came in. Said to them that the terminal needs some maintenance and some more bullshit. Are you sure nobody saw you on the way?",
+            ),
+            DialogueLine::new(true, "yeah. i should be safe for an hour or so."),
+            DialogueLine::new(
+                false,
+                "Good. Still, make it quick. I suggest giving a look at some files related to your sector.",
+            ),
+            DialogueLine::new(true, "god i hate plants."),
+            DialogueLine::new(
+                false,
+                "No shit, but I still need for you to read through them carefully. I overlooked the desktop and there should be a few encrypted folders. You know whose terminal is this? Can be connected to that.",
+            ),
+            DialogueLine::new(
+                true,
+                "no fucking clue. probably some french nerd i was talking to the other day. he is awful…",
+            ),
+            DialogueLine::new(false, "HAHAHAH, YOU MEAN PIERRE??"),
+            DialogueLine::new(
+                true,
+                "yeah he thinks im into him. poor guy doesnt even have a clue we used him.",
+            ),
+            DialogueLine::new(
+                false,
+                "Hahaha, yeah. OK, let’s stop fooling around. Your terminal is only connected to mine, so I can see what you’re doing. I’ll try to help along the way.",
+            ),
+            DialogueLine::new(true, "yup."),
         ],
         index: 0,
     }
+}
+
+fn build_act1_file_triggers(file_triggers: &mut FileDialogueTriggers) {
+    file_triggers.register(
+        "incident_report.txt",
+        vec![
+            DialogueLine::new(false, "Hey, might be important."),
+            DialogueLine::new(true, "doesnt seem like it."),
+            DialogueLine::new(
+                false,
+                "Jesus, just take a closer look! It’s his report after all.",
+            ),
+            DialogueLine::new(true, "okay okay."),
+        ],
+    );
+
+    // Future file triggers go here
 }
 
 fn build_fs_hierarchy(omega_tex: TextureId, size: egui::Vec2) -> FsHierarchy {
