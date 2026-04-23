@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use bevy::prelude::*;
 
@@ -75,17 +75,9 @@ fn process_scripted_event(
             }
         }
         ScriptedEvent::FileOpened(name) => {
-            if triggers.triggered.contains(name.as_str()) {
-                return;
-            }
-            if let Some(lines) = triggers.map.get(name.as_str()).cloned() {
-                info!("[Story] File '{}' dialogue triggered", name);
-                triggers.triggered.insert(name);
-                dialogues.add_lines(lines);
-
-                // Re-open or un-minimize the chatbox.
-                // If it was closed, this creates a fresh instance starting at the new lines.
-                // If it was minimized, this brings it back up.
+            let new_lines = triggers.notify_opened(&name);
+            if !new_lines.is_empty() {
+                dialogues.add_lines(new_lines);
                 cmd.trigger(OpenAppEvent {
                     name: "Chat".to_string(),
                     app_type: Applications::Chatbox {
@@ -151,15 +143,48 @@ impl DialogueLine {
     }
 }
 
+pub enum TriggerOperation {
+    Any, // OR
+    All, // AND
+}
+
+pub struct DialogueTrigger {
+    pub files: Vec<String>,
+    pub oper: TriggerOperation,
+    pub lines: Vec<DialogueLine>,
+    fired: bool,
+}
+
 #[derive(Resource, Default)]
 pub struct FileDialogueTriggers {
-    pub map: HashMap<String, Vec<DialogueLine>>,
-    triggered: HashSet<String>,
+    pub triggers: Vec<DialogueTrigger>,
+    opened: HashSet<String>,
 }
 
 impl FileDialogueTriggers {
-    pub fn register(&mut self, file_name: impl Into<String>, lines: Vec<DialogueLine>) {
-        self.map.insert(file_name.into(), lines);
+    pub fn register(&mut self, files: &[&str], oper: TriggerOperation, lines: Vec<DialogueLine>) {
+        self.triggers.push(DialogueTrigger {
+            files: files.iter().map(|s| s.to_string()).collect(),
+            oper,
+            lines,
+            fired: false,
+        });
+    }
+    pub fn notify_opened(&mut self, name: &str) -> Vec<DialogueLine> {
+        self.opened.insert(name.to_string());
+        let opened = &self.opened;
+        let mut result = Vec::new();
+        for trigger in self.triggers.iter_mut().filter(|t| !t.fired) {
+            let ready = match trigger.oper {
+                TriggerOperation::Any => trigger.files.iter().any(|f| opened.contains(f)),
+                TriggerOperation::All => trigger.files.iter().all(|f| opened.contains(f)),
+            };
+            if ready {
+                trigger.fired = true;
+                result.extend(trigger.lines.iter().cloned());
+            }
+        }
+        result
     }
 }
 
