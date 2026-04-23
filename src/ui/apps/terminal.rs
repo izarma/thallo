@@ -12,7 +12,7 @@ const COLOR_INPUT: Color32 = Color32::from_rgb(210, 210, 210);
 const COLOR_HEADER: Color32 = Color32::from_rgb(100, 110, 100);
 
 const BOOT_LINES: &[&str] = &[
-    "ST-OS v4.2.1 [CLASSIFIED BUILD]",
+    "ST-OS v4.2.0 [CLASSIFIED BUILD]",
     "Research Division Terminal Access",
     "WARNING: Unauthorized access is a federal offense.",
     "Session logging is active.",

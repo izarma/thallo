@@ -157,7 +157,7 @@ fn show_open_windows(
                                 {
                                     history.push(format!("> {}", cmd_str));
                                     if let Some(event) =
-                                        execute_command(&cmd_str, cwd, history, &vfs)
+                                        execute_command(&cmd_str, cwd, history, &mut *vfs)
                                     {
                                         cmd.trigger(event); // cmd here is the Bevy Commands from the system params
                                     }
