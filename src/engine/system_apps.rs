@@ -105,3 +105,23 @@ pub enum ChatBoxState {
     PlayerReady { chars_revealed: usize },
     Done,
 }
+
+#[derive(Debug, Clone)]
+pub enum SystemAlerts {
+    FileTransfer(String),
+    EncryptedError,
+}
+
+#[derive(Event)]
+pub struct OpenAlertEvent {
+    pub name: String,
+    pub alert: SystemAlerts,
+}
+
+impl OpenAlertEvent {
+    //do we have a from fs node as well?
+    pub fn from_scripted_event(name: String, alert: SystemAlerts) -> Self {
+        println!("{}", name);
+        Self { name, alert }
+    }
+}

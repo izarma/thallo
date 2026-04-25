@@ -7,8 +7,8 @@ use vleue_kinetoscope::{AnimatedImagePlugin, AnimationPlayed, StreamingAnimatedI
 use crate::engine::{
     asset_tracking::ResourceHandles,
     screens::{
-        Screen,
         desktop::{DesktopAssets, DesktopTextures},
+        Screen,
     },
 };
 

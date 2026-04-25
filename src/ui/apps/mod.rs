@@ -10,7 +10,7 @@ use crate::{
             Screen,
             desktop::{DesktopTextures, IconTextures},
         },
-        scripted_events::{Dialogues, ScriptedEvent},
+        scripted_events::Dialogues,
         system_apps::{Applications, OpenAppEvent},
         terminal_commands::execute_command,
         window_manager::{OpenWindows, ToggleMinimizeEvent, WindowAction},
@@ -260,9 +260,6 @@ fn show_open_windows(
                     };
 
                 if vfs.unlock_with_password(&path, &password).is_ok() {
-                    if path.file_name() == "omega.png" {
-                        cmd.trigger(ScriptedEvent::Unlock1);
-                    }
                     if let Some(node) = vfs.get_node(&path) {
                         let fresh_event = OpenAppEvent::from_fsnode(node, path);
                         entry.event.app_type = fresh_event.app_type;

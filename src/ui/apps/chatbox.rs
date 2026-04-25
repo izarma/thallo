@@ -160,7 +160,7 @@ fn render_messages(
                 .show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = 8.0;
 
-                    for DialogueLine { speaker, text } in displayed {
+                    for DialogueLine { speaker, text, .. } in displayed {
                         bubble(ui, text, *speaker, &font, &font_sm);
                     }
                 });

@@ -5,96 +5,156 @@ use bevy::prelude::*;
 use crate::engine::{
     CoreSystems,
     screens::Screen,
-    system_apps::{Applications, ChatBoxState, OpenAppEvent},
+    system_apps::{Applications, ChatBoxState, OpenAlertEvent, OpenAppEvent, SystemAlerts},
 };
 
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<UnlockState>();
-    //.load_resource::<MinigameAssets>();
     app.init_resource::<FileDialogueTriggers>();
-    app.add_observer(process_scripted_event);
+    app.add_observer(on_scripted_event);
     app.add_observer(on_file_opened);
     app.add_systems(OnEnter(Screen::Desktop), schedule_open_chat);
     app.add_systems(
         Update,
-        tick_delayed_events
+        (tick_delayed_events, check_dialogue_triggers)
             .in_set(CoreSystems::Logic)
             .run_if(in_state(Screen::Desktop)),
     );
-
-    app.init_resource::<FileDialogueTriggers>();
-    // app.init_resource::<ActiveMinigame>()
-    //     .add_observer(on_minigame_trigger);
 }
 
-#[derive(Event, Clone)]
-pub enum ScriptedEvent {
+#[derive(Event, Clone, Debug, PartialEq)]
+pub enum ScriptedEventTrigger {
     OpenChat,
-    Unlock1,
-    FileOpened(String),
-}
-
-#[derive(Component)]
-struct DelayedEvent {
-    timer: Timer,
-    event: ScriptedEvent,
+    FileTrigger(String),
+    ChatTrigger(String), // add required shit later
 }
 
 #[derive(Resource, Default, Debug)]
 pub struct UnlockState {
     pub chat: bool,
-    pub mg1: bool,
 }
 
-fn process_scripted_event(
-    ev: On<ScriptedEvent>,
+fn on_scripted_event(
+    ev: On<ScriptedEventTrigger>,
     mut state: ResMut<UnlockState>,
     mut cmd: Commands,
     mut triggers: ResMut<FileDialogueTriggers>,
     mut dialogues: ResMut<Dialogues>,
 ) {
     match ev.clone() {
-        ScriptedEvent::OpenChat => {
-            if !state.chat {
-                state.chat = true;
-                info!("[Story] Chat unlocked");
-                cmd.trigger(OpenAppEvent {
-                    name: "Chat".to_string(),
-                    app_type: Applications::Chatbox {
-                        input: String::new(),
-                        state: ChatBoxState::AnonTyping { elapsed: 0.0 },
-                        displayed: Vec::new(),
-                    },
-                });
-            }
+        ScriptedEventTrigger::OpenChat => effect_unlock_chat(&mut state, &mut cmd),
+        ScriptedEventTrigger::FileTrigger(name) => {
+            effect_file_trigger(name, &mut triggers, &mut dialogues, &mut cmd)
         }
-        ScriptedEvent::Unlock1 => {
-            if !state.mg1 {
-                state.mg1 = true;
-                info!("[Story] omega.png decrypted — Unlock1 complete");
-            }
-        }
-        ScriptedEvent::FileOpened(name) => {
-            let new_lines = triggers.notify_opened(&name);
-            if !new_lines.is_empty() {
-                dialogues.add_lines(new_lines);
-                cmd.trigger(OpenAppEvent {
-                    name: "Chat".to_string(),
-                    app_type: Applications::Chatbox {
-                        input: String::new(),
-                        state: ChatBoxState::AnonTyping { elapsed: 0.0 },
-                        displayed: Vec::new(),
-                    },
-                });
-            }
-        }
+        ScriptedEventTrigger::ChatTrigger(name) => effect_open_file_transfer_alert(&mut cmd, name),
     }
+}
+
+pub enum FileTriggerOperation {
+    Any, // OR
+    All, // AND
+}
+
+pub struct DialogueTrigger {
+    pub files: Vec<String>,
+    pub oper: FileTriggerOperation,
+    pub lines: Vec<DialogueLine>,
+    fired: bool,
+}
+
+#[derive(Resource, Default)]
+pub struct FileDialogueTriggers {
+    pub triggers: Vec<DialogueTrigger>,
+    opened: HashSet<String>,
+}
+
+impl FileDialogueTriggers {
+    pub fn register(
+        &mut self,
+        files: &[&str],
+        oper: FileTriggerOperation,
+        lines: Vec<DialogueLine>,
+    ) {
+        self.triggers.push(DialogueTrigger {
+            files: files.iter().map(|s| s.to_string()).collect(),
+            oper,
+            lines,
+            fired: false,
+        });
+    }
+    pub fn notify_opened(&mut self, name: &str) -> Vec<DialogueLine> {
+        self.opened.insert(name.to_string());
+        let opened = &self.opened;
+        let mut result = Vec::new();
+        for trigger in self.triggers.iter_mut().filter(|t| !t.fired) {
+            let ready = match trigger.oper {
+                FileTriggerOperation::Any => trigger.files.iter().any(|f| opened.contains(f)),
+                FileTriggerOperation::All => trigger.files.iter().all(|f| opened.contains(f)),
+            };
+            if ready {
+                trigger.fired = true;
+                result.extend(trigger.lines.iter().cloned());
+            }
+        }
+        result
+    }
+}
+
+// Trigger Effects
+
+fn effect_unlock_chat(state: &mut UnlockState, cmd: &mut Commands) {
+    if state.chat {
+        return;
+    }
+    state.chat = true;
+    info!("[Story] Chat unlocked");
+    cmd.trigger(open_chatbox());
+}
+
+fn effect_file_trigger(
+    name: String,
+    triggers: &mut FileDialogueTriggers,
+    dialogues: &mut Dialogues,
+    cmd: &mut Commands,
+) {
+    let new_lines = triggers.notify_opened(&name);
+    if !new_lines.is_empty() {
+        dialogues.add_lines(new_lines);
+        cmd.trigger(open_chatbox());
+    }
+}
+
+fn effect_open_file_transfer_alert(cmd: &mut Commands, name: String) {
+    info!("[Story] File transfer alert triggered");
+    cmd.trigger(OpenAlertEvent::from_scripted_event(
+        "Incoming Transfer".to_string(),
+        SystemAlerts::FileTransfer(name),
+    ));
+}
+
+fn open_chatbox() -> OpenAppEvent {
+    OpenAppEvent {
+        name: "Chat".to_string(),
+        app_type: Applications::Chatbox {
+            input: String::new(),
+            state: ChatBoxState::AnonTyping { elapsed: 0.0 },
+            displayed: Vec::new(),
+        },
+    }
+}
+
+// Delayed Events
+
+#[derive(Component)]
+struct DelayedEvent {
+    timer: Timer,
+    event: ScriptedEventTrigger,
 }
 
 fn schedule_open_chat(mut cmd: Commands) {
     cmd.spawn(DelayedEvent {
         timer: Timer::from_seconds(5.0, TimerMode::Once),
-        event: ScriptedEvent::OpenChat,
+        event: ScriptedEventTrigger::OpenChat,
     });
 }
 
@@ -112,82 +172,6 @@ fn tick_delayed_events(
     }
 }
 
-#[derive(Resource)]
-pub struct Dialogues {
-    pub lines: Vec<DialogueLine>,
-    pub index: usize,
-}
-
-impl Dialogues {
-    pub fn add_lines(&mut self, lines: Vec<DialogueLine>) {
-        self.lines.extend(lines);
-    }
-    pub fn has_unplayed(&self) -> bool {
-        self.index < self.lines.len()
-    }
-}
-
-/// `speaker: false` = anon, `speaker: true` = player.
-#[derive(Debug, PartialEq, Clone)]
-pub struct DialogueLine {
-    pub speaker: bool,
-    pub text: String,
-}
-
-impl DialogueLine {
-    pub fn new(speaker: bool, text: &str) -> Self {
-        Self {
-            speaker,
-            text: text.to_string(),
-        }
-    }
-}
-
-pub enum TriggerOperation {
-    Any, // OR
-    All, // AND
-}
-
-pub struct DialogueTrigger {
-    pub files: Vec<String>,
-    pub oper: TriggerOperation,
-    pub lines: Vec<DialogueLine>,
-    fired: bool,
-}
-
-#[derive(Resource, Default)]
-pub struct FileDialogueTriggers {
-    pub triggers: Vec<DialogueTrigger>,
-    opened: HashSet<String>,
-}
-
-impl FileDialogueTriggers {
-    pub fn register(&mut self, files: &[&str], oper: TriggerOperation, lines: Vec<DialogueLine>) {
-        self.triggers.push(DialogueTrigger {
-            files: files.iter().map(|s| s.to_string()).collect(),
-            oper,
-            lines,
-            fired: false,
-        });
-    }
-    pub fn notify_opened(&mut self, name: &str) -> Vec<DialogueLine> {
-        self.opened.insert(name.to_string());
-        let opened = &self.opened;
-        let mut result = Vec::new();
-        for trigger in self.triggers.iter_mut().filter(|t| !t.fired) {
-            let ready = match trigger.oper {
-                TriggerOperation::Any => trigger.files.iter().any(|f| opened.contains(f)),
-                TriggerOperation::All => trigger.files.iter().all(|f| opened.contains(f)),
-            };
-            if ready {
-                trigger.fired = true;
-                result.extend(trigger.lines.iter().cloned());
-            }
-        }
-        result
-    }
-}
-
 fn on_file_opened(ev: On<OpenAppEvent>, mut cmd: Commands) {
     let is_file_app = matches!(
         ev.app_type,
@@ -198,14 +182,63 @@ fn on_file_opened(ev: On<OpenAppEvent>, mut cmd: Commands) {
     }
     cmd.spawn(DelayedEvent {
         timer: Timer::from_seconds(5.0, TimerMode::Once),
-        event: ScriptedEvent::FileOpened(ev.name.clone()),
+        event: ScriptedEventTrigger::FileTrigger(ev.name.clone()),
     });
 }
 
-fn next_chatbox_state(lines: &[DialogueLine], index: usize) -> ChatBoxState {
-    match lines.get(index) {
-        Some(line) if !line.speaker => ChatBoxState::AnonTyping { elapsed: 0.0 },
-        Some(_) => ChatBoxState::PlayerReady { chars_revealed: 0 },
-        None => ChatBoxState::Done,
+// Dialogues
+
+/// `speaker: false` = anon, `speaker: true` = player.
+#[derive(Debug, PartialEq, Clone)]
+pub struct DialogueLine {
+    pub speaker: bool,
+    pub text: String,
+    pub on_complete: Option<ScriptedEventTrigger>,
+}
+
+impl DialogueLine {
+    pub fn new(speaker: bool, text: &str) -> Self {
+        Self {
+            speaker,
+            text: text.to_string(),
+            on_complete: None,
+        }
     }
+    pub fn on_complete(mut self, event: ScriptedEventTrigger) -> Self {
+        self.on_complete = Some(event);
+        self
+    }
+}
+
+#[derive(Resource)]
+pub struct Dialogues {
+    pub lines: Vec<DialogueLine>,
+    pub index: usize,
+}
+
+impl Dialogues {
+    pub fn add_lines(&mut self, lines: Vec<DialogueLine>) {
+        self.lines.extend(lines);
+    }
+    // why is this needed - if needed why not used?
+    pub fn has_unplayed(&self) -> bool {
+        self.index < self.lines.len()
+    }
+}
+
+fn check_dialogue_triggers(
+    dialogues: Res<Dialogues>,
+    mut last_index: Local<usize>,
+    mut cmd: Commands,
+) {
+    if !dialogues.is_changed() || dialogues.index == *last_index {
+        return;
+    }
+    for i in *last_index..dialogues.index {
+        if let Some(event) = dialogues.lines.get(i).and_then(|l| l.on_complete.clone()) {
+            info!("[Story] on_complete fired for dialogue line {}", i);
+            cmd.trigger(event);
+        }
+    }
+    *last_index = dialogues.index;
 }

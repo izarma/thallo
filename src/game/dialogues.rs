@@ -1,5 +1,5 @@
 use crate::engine::scripted_events::{
-    DialogueLine, Dialogues, FileDialogueTriggers, TriggerOperation,
+    DialogueLine, Dialogues, FileDialogueTriggers, FileTriggerOperation, ScriptedEventTrigger,
 };
 
 pub(super) fn build_dialogues() -> Dialogues {
@@ -10,7 +10,7 @@ pub(super) fn build_dialogues() -> Dialogues {
             DialogueLine::new(
                 false,
                 "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.",
-            ),
+            ).on_complete(ScriptedEventTrigger::ChatTrigger("Brute Force Tool".to_string())),
             DialogueLine::new(true, "isnt this terminal connected to the rest?"),
             DialogueLine::new(
                 false,
@@ -21,7 +21,8 @@ pub(super) fn build_dialogues() -> Dialogues {
                 false,
                 "Good. Still, make it quick. I suggest giving a look at some files related to your sector.",
             ),
-            DialogueLine::new(true, "god i hate plants."),
+            DialogueLine::new(true, "god i hate plants.")
+                ,
             DialogueLine::new(
                 false,
                 "No shit, but I still need for you to read through them carefully. I overlooked the desktop and there should be a few encrypted folders. You know whose terminal is this? Can be connected to that.",
@@ -48,7 +49,7 @@ pub(super) fn build_dialogues() -> Dialogues {
 pub(super) fn build_act1_file_triggers(file_triggers: &mut FileDialogueTriggers) {
     file_triggers.register(
         &["incident_report.txt"],
-        TriggerOperation::Any,
+        FileTriggerOperation::Any,
         vec![
             DialogueLine::new(false, "Hey, might be important."),
             DialogueLine::new(true, "doesnt seem like it."),
@@ -62,7 +63,7 @@ pub(super) fn build_act1_file_triggers(file_triggers: &mut FileDialogueTriggers)
 
     file_triggers.register(
         &["collective_complaint.txt", "notes.txt", "response.txt"],
-        TriggerOperation::All,
+        FileTriggerOperation::All,
         vec![
             DialogueLine::new(false, "Okay, that’s… weird."),
             DialogueLine::new(true, "yeah I though the same. have you ever heard the hum?"),
