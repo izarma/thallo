@@ -4,10 +4,14 @@ use bevy_egui::{
     egui::{self, Color32},
 };
 
-use crate::engine::{
-    UiPassSystems,
-    screens::Screen,
-    system_apps::{OpenAlertEvent, SystemAlerts},
+use crate::{
+    engine::{
+        UiPassSystems,
+        screens::Screen,
+        scripted_events::{NewFileReceiving, UnlockState},
+        system_apps::{OpenAlertEvent, SystemAlerts},
+    },
+    ui::theme::widgets::primitives::progress_bar,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -25,13 +29,18 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
-fn show_popups(mut contexts: EguiContexts, mut open_alerts: ResMut<OpenAlerts>) -> Result {
+fn show_popups(
+    mut contexts: EguiContexts,
+    mut open_alerts: ResMut<OpenAlerts>,
+    mut unlock_state: ResMut<UnlockState>,
+) -> Result {
     let ctx = contexts.ctx_mut()?;
 
     for entry in open_alerts.alerts.iter_mut() {
         if !entry.is_open {
             continue;
         }
+        let mut close_requested = false;
         bevy_egui::egui::Window::new(&entry.name)
             .open(&mut entry.is_open)
             .resizable(false)
@@ -41,13 +50,33 @@ fn show_popups(mut contexts: EguiContexts, mut open_alerts: ResMut<OpenAlerts>) 
                 bevy_egui::egui::vec2(0.0, 0.0),
             )
             .show(ctx, |ui| match &entry.alert {
-                SystemAlerts::FileTransfer(name) => {
-                    render_file_transfer_ui(ui, entry.elapsed, name.clone());
+                SystemAlerts::FileTransfer(download) => {
+                    if render_file_transfer_ui(ui, entry.elapsed, download) {
+                        close_requested = true;
+                    }
                 }
-                _ => {
-                    ui.label("System notification received.");
+                SystemAlerts::EncryptedError => {
+                    ui.label("File/Folder is Encrypted");
+                }
+                SystemAlerts::UninitalizedChat => {
+                    ui.label("Chatbox not initialized.");
                 }
             });
+        if close_requested {
+            entry.is_open = false;
+        }
+    }
+    for entry in open_alerts.alerts.iter() {
+        if !entry.is_open {
+            if let SystemAlerts::FileTransfer(download) = &entry.alert {
+                if entry.elapsed >= LOAD_DURATION {
+                    match download {
+                        NewFileReceiving::BruteForce => unlock_state.bruteforce = true,
+                        NewFileReceiving::NetRipper => unlock_state.netripper = true,
+                    }
+                }
+            }
+        }
     }
 
     open_alerts.alerts.retain(|a| a.is_open);
@@ -88,9 +117,10 @@ fn update_alert_progress(time: Res<Time>, mut open_alerts: ResMut<OpenAlerts>) {
     }
 }
 
-fn render_file_transfer_ui(ui: &mut egui::Ui, elapsed: f32, name: String) {
+fn render_file_transfer_ui(ui: &mut egui::Ui, elapsed: f32, download: &NewFileReceiving) -> bool {
     let progress = (elapsed / LOAD_DURATION).clamp(0.0, 1.0);
     let is_done = progress >= 1.0;
+    let mut close = false;
 
     ui.vertical_centered(|ui| {
         ui.add_space(10.0);
@@ -99,43 +129,22 @@ fn render_file_transfer_ui(ui: &mut egui::Ui, elapsed: f32, name: String) {
         let title = if is_done {
             "TRANSFER COMPLETE".to_string()
         } else {
-            format!("TRANSFERRING {}", name)
+            format!("TRANSFERRING {:?}", download)
         };
         ui.label(egui::RichText::new(title).strong().color(Color32::WHITE));
 
         ui.add_space(8.0);
 
         // Progress Bar
-        let bar_size = egui::vec2(300.0, 12.0);
-        let (rect, _) = ui.allocate_exact_size(bar_size, egui::Sense::hover());
-
-        // Draw Background
-        ui.painter()
-            .rect_filled(rect, 2.0, Color32::from_rgb(30, 30, 40));
-
-        // Draw Fill
-        if progress > 0.0 {
-            let mut fill_rect = rect;
-            fill_rect.set_width(rect.width() * progress);
-            let fill_color = if is_done {
-                Color32::from_rgb(80, 200, 120)
-            } else {
-                Color32::from_rgb(200, 70, 70)
-            };
-            ui.painter().rect_filled(fill_rect, 2.0, fill_color);
-        }
-
-        ui.add_space(8.0);
-
-        // Percentage
-        ui.label(format!("{:.0}%", progress * 100.0));
+        progress_bar(ui, progress, 300.0, 12.0);
 
         if is_done {
-            if ui.button("Close").clicked() {
-                // In a real scenario, you might want to trigger a close event here
+            if ui.button("Ok").clicked() {
+                close = true;
             }
         } else {
             ui.ctx().request_repaint(); // Keep animating
         }
     });
+    close
 }

@@ -3,7 +3,8 @@ use bevy_egui::egui;
 
 use crate::engine::{
     file_system::FsPath,
-    system_apps::{Applications, ChatBoxState, OpenAppEvent},
+    scripted_events::UnlockState,
+    system_apps::{Applications, ChatBoxState, OpenAlertEvent, OpenAppEvent, SystemAlerts},
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -74,7 +75,20 @@ impl WindowEntry {
     }
 }
 
-fn handle_open_node_events(node: On<OpenAppEvent>, mut open_windows: ResMut<OpenWindows>) {
+fn handle_open_node_events(
+    node: On<OpenAppEvent>,
+    mut open_windows: ResMut<OpenWindows>,
+    state: Res<UnlockState>,
+    mut cmd: Commands,
+) {
+    if matches!(node.app_type, Applications::Decrypter { .. }) && !state.bruteforce {
+        cmd.trigger(OpenAlertEvent {
+            name: node.name.clone(),
+            alert: SystemAlerts::EncryptedError,
+        });
+        return;
+    }
+
     open_windows.open(node.clone());
 }
 

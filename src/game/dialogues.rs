@@ -1,5 +1,6 @@
 use crate::engine::scripted_events::{
-    DialogueLine, Dialogues, FileDialogueTriggers, FileTriggerOperation, ScriptedEventTrigger,
+    ChatTriggerType, DialogueLine, Dialogues, FileDialogueTriggers, FileTriggerOperation,
+    NewFileReceiving, ScriptedEventTrigger,
 };
 
 pub(super) fn build_dialogues() -> Dialogues {
@@ -10,8 +11,8 @@ pub(super) fn build_dialogues() -> Dialogues {
             DialogueLine::new(
                 false,
                 "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.",
-            ).on_complete(ScriptedEventTrigger::ChatTrigger("Brute Force Tool".to_string())),
-            DialogueLine::new(true, "isnt this terminal connected to the rest?"),
+            ).on_complete(ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(NewFileReceiving::BruteForce))),
+            DialogueLine::new(true, "isn't this terminal connected to the rest?"),
             DialogueLine::new(
                 false,
                 "Nope. Cut the lines before you came in. Said to them that the terminal needs some maintenance and some more bullshit. Are you sure nobody saw you on the way?",
@@ -71,7 +72,7 @@ pub(super) fn build_act1_file_triggers(file_triggers: &mut FileDialogueTriggers)
             DialogueLine::new(true, "ok this is getting ridiculous."),
             DialogueLine::new(false, "?"),
             DialogueLine::new(true, "i mean it doesnt make sense. there cant be a possibility that one part of the crew just suddenly hallucinates?"),
-            DialogueLine::new(false, "Well, it/’s either that or there is something wrong here. We probably need to dig deeper. There should be another encrypted folder on the desktop."),
+            DialogueLine::new(false, "Well, it’s either that or there is something wrong here. We probably need to dig deeper. There should be another encrypted folder on the desktop."),
             DialogueLine::new(true, "yeah, there is. any ideas how to open this?"),
             DialogueLine::new(false, "Well, this one guy I know helped me out and sent some sort of a brute force file. Might come in handy on your side. Sending it right now."),
         ],

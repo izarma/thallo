@@ -18,6 +18,7 @@ use crate::{
     ui::{
         apps::{
             chatbox::{commit_player_line, show_chatbox},
+            decrypter::show_encrypted,
             file_explorer::show_file_explorer,
             image_viewer::show_image_viewer,
             terminal::show_terminal,
@@ -29,6 +30,7 @@ use crate::{
 };
 
 mod chatbox;
+mod decrypter;
 mod file_explorer;
 mod image_viewer;
 pub mod settings_menu;
@@ -200,20 +202,13 @@ fn show_open_windows(
                                 elapsed,
                                 minigames_triggered,
                             } => {
-                                //     let output =
-                                //         show_encrypted(ui, elapsed, minigames_triggered, dt, paused);
-
-                                //     if let Some(idx) = output.triggered_checkpoint {
-                                //         active_mg.checkpoint = Some(idx);
-                                //         cmd.trigger(MinigameTrigger { checkpoint: idx });
-                                //     }
-
-                                //     if output.complete {
-                                //         WindowAction::DecryptComplete { path: path.clone() }
-                                //     } else {
-                                //         WindowAction::None
-                                //     }
-                                WindowAction::None
+                                let output =
+                                    show_encrypted(ui, elapsed, minigames_triggered, dt, false);
+                                if output.complete {
+                                    WindowAction::DecryptComplete { path: path.clone() }
+                                } else {
+                                    WindowAction::None
+                                }
                             }
                         };
                         actions.push((entry.id, action));

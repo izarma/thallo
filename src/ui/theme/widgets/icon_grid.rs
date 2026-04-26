@@ -120,14 +120,12 @@ pub fn show_icon_grid(
 
                                 let resp = ui.add(btn);
 
-                                if resp.double_clicked() {
-                                    action = IconGridAction::Opened(item.id.clone());
-                                } else if resp.clicked() {
-                                    action = IconGridAction::Selected(if is_selected {
-                                        String::new() // empty = deselect
+                                if resp.clicked() {
+                                    if is_selected {
+                                        action = IconGridAction::Opened(item.id.clone());
                                     } else {
-                                        item.id.clone()
-                                    });
+                                        action = IconGridAction::Selected(item.id.clone());
+                                    }
                                 }
 
                                 let label = truncate_label(&item.label, ICON_LABEL_MAX_CHARS);

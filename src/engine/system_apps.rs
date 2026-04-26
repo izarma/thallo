@@ -3,7 +3,7 @@ use bevy_egui::egui::{TextureId, Vec2};
 
 use crate::engine::{
     file_system::{FileType, FsNode, FsPath, LockType},
-    scripted_events::DialogueLine,
+    scripted_events::{DialogueLine, NewFileReceiving},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -108,7 +108,8 @@ pub enum ChatBoxState {
 
 #[derive(Debug, Clone)]
 pub enum SystemAlerts {
-    FileTransfer(String),
+    FileTransfer(NewFileReceiving),
+    UninitalizedChat,
     EncryptedError,
 }
 

@@ -26,12 +26,25 @@ pub(super) fn plugin(app: &mut App) {
 pub enum ScriptedEventTrigger {
     OpenChat,
     FileTrigger(String),
-    ChatTrigger(String), // add required shit later
+    ChatTrigger(ChatTriggerType), // add required shit later
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChatTriggerType {
+    FileTransfer(NewFileReceiving),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum NewFileReceiving {
+    BruteForce,
+    NetRipper,
 }
 
 #[derive(Resource, Default, Debug)]
 pub struct UnlockState {
     pub chat: bool,
+    pub bruteforce: bool,
+    pub netripper: bool,
 }
 
 fn on_scripted_event(
@@ -46,7 +59,9 @@ fn on_scripted_event(
         ScriptedEventTrigger::FileTrigger(name) => {
             effect_file_trigger(name, &mut triggers, &mut dialogues, &mut cmd)
         }
-        ScriptedEventTrigger::ChatTrigger(name) => effect_open_file_transfer_alert(&mut cmd, name),
+        ScriptedEventTrigger::ChatTrigger(trigger) => match trigger {
+            ChatTriggerType::FileTransfer(recv) => effect_open_file_transfer_alert(&mut cmd, recv),
+        },
     }
 }
 
@@ -124,11 +139,11 @@ fn effect_file_trigger(
     }
 }
 
-fn effect_open_file_transfer_alert(cmd: &mut Commands, name: String) {
+fn effect_open_file_transfer_alert(cmd: &mut Commands, recv: NewFileReceiving) {
     info!("[Story] File transfer alert triggered");
     cmd.trigger(OpenAlertEvent::from_scripted_event(
         "Incoming Transfer".to_string(),
-        SystemAlerts::FileTransfer(name),
+        SystemAlerts::FileTransfer(recv),
     ));
 }
 
