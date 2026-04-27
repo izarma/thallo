@@ -168,7 +168,7 @@ struct DelayedEvent {
 
 fn schedule_open_chat(mut cmd: Commands) {
     cmd.spawn(DelayedEvent {
-        timer: Timer::from_seconds(5.0, TimerMode::Once),
+        timer: Timer::from_seconds(1.0, TimerMode::Once), // cahnge to 5 later
         event: ScriptedEventTrigger::OpenChat,
     });
 }

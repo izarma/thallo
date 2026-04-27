@@ -6,6 +6,7 @@ use crate::{
         Pause, UiPassSystems,
         design_scale::DesignScale,
         file_system::FsHierarchy,
+        minigames::{MinigameTrigger, MinigameType},
         screens::{
             Screen,
             desktop::{DesktopTextures, IconTextures},
@@ -50,7 +51,6 @@ pub(super) fn plugin(app: &mut App) {
             )
             .in_set(UiPassSystems::Render),
     );
-    //app.add_systems(Update, minigame_overlay);
 }
 
 const WINDOW_DESIGN_W: f32 = 1040.0;
@@ -207,7 +207,10 @@ fn show_open_windows(
                                 let output =
                                     show_encrypted(ui, elapsed, minigames_triggered, dt, paused.0);
                                 if let Some(idx) = output.triggered_checkpoint {
-                                    // start minigame
+                                    cmd.trigger(MinigameTrigger {
+                                        checkpoint: idx,
+                                        game_type: MinigameType::BruteForce,
+                                    });
                                 }
 
                                 if output.complete {
