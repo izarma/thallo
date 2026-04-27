@@ -3,7 +3,7 @@ use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 
 use crate::{
     engine::{
-        UiPassSystems,
+        Pause, UiPassSystems,
         design_scale::DesignScale,
         file_system::FsHierarchy,
         screens::{
@@ -50,6 +50,7 @@ pub(super) fn plugin(app: &mut App) {
             )
             .in_set(UiPassSystems::Render),
     );
+    //app.add_systems(Update, minigame_overlay);
 }
 
 const WINDOW_DESIGN_W: f32 = 1040.0;
@@ -67,6 +68,7 @@ fn show_open_windows(
     tex: Res<DesktopTextures>,
     scale: Res<DesignScale>,
     time: Res<Time>,
+    paused: Res<State<Pause>>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
     let top_layer_window_id = ctx.memory(|mem| {
@@ -203,7 +205,11 @@ fn show_open_windows(
                                 minigames_triggered,
                             } => {
                                 let output =
-                                    show_encrypted(ui, elapsed, minigames_triggered, dt, false);
+                                    show_encrypted(ui, elapsed, minigames_triggered, dt, paused.0);
+                                if let Some(idx) = output.triggered_checkpoint {
+                                    // start minigame
+                                }
+
                                 if output.complete {
                                     WindowAction::DecryptComplete { path: path.clone() }
                                 } else {

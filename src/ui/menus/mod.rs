@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-mod desktop;
+pub mod desktop;
 mod shutdown;
 mod startup;
 

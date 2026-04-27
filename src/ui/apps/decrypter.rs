@@ -94,7 +94,7 @@ pub(super) fn show_encrypted(
             ui.add_space(14.0);
 
             // Minigame checkpoint indicators (stubbed)
-            ui.horizontal(|ui| {
+            ui.horizontal_centered(|ui| {
                 for (i, &threshold) in MINIGAME_CHECKPOINTS.iter().enumerate() {
                     let bit = 1u8 << i;
                     let done = (*minigames_triggered & bit) != 0;

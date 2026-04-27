@@ -6,7 +6,7 @@ use bevy_egui::{
 
 use crate::{
     engine::{
-        UiPassSystems,
+        CoreSystems, UiPassSystems,
         screens::Screen,
         scripted_events::{NewFileReceiving, UnlockState},
         system_apps::{OpenAlertEvent, SystemAlerts},
@@ -19,7 +19,9 @@ pub(super) fn plugin(app: &mut App) {
     app.add_observer(on_open_alert);
     app.add_systems(
         Update, // Update progress state
-        update_alert_progress.run_if(in_state(Screen::Desktop)),
+        update_alert_progress
+            .run_if(in_state(Screen::Desktop))
+            .in_set(CoreSystems::Logic),
     );
     app.add_systems(
         EguiPrimaryContextPass,

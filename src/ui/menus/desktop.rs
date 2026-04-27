@@ -129,7 +129,7 @@ struct DesktopItem {
 }
 
 #[derive(Resource, Default)]
-struct TaskBarState {
+pub struct TaskBarState {
     pub settings_open: bool,
 }
 
@@ -295,14 +295,32 @@ fn show_settings_egui_window(
     let mut window_mode = win.mode.clone();
     let mut resolution = win.resolution.clone();
     let mut decorations = win.decorations;
+    let ctx = contexts.ctx_mut()?;
+    egui::Area::new(egui::Id::new("settings_scrim"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(egui::Pos2::ZERO)
+        .interactable(true)
+        .show(ctx, |ui| {
+            let screen = ui.ctx().content_rect();
+            let (rect, _response) = ui.allocate_exact_size(
+                screen.size(),
+                egui::Sense::click_and_drag(), // absorbs all input
+            );
+            ui.painter().rect_filled(
+                rect,
+                egui::CornerRadius::ZERO,
+                egui::Color32::from_black_alpha(180),
+            );
+        });
 
     let mut is_open = state.settings_open;
     egui::Window::new("Settings")
         .open(&mut is_open) // the × button sets this to false
         .resizable(false)
+        .order(egui::Order::TOP)
         .collapsible(false)
         .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
-        .show(contexts.ctx_mut()?, |ui| {
+        .show(ctx, |ui| {
             ui.set_min_width(280.0);
             show_settings_window(
                 ui,
