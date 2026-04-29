@@ -1,6 +1,7 @@
 use crate::engine::{
-    file_system::{FileType, FsError, FsHierarchy, FsPath, HOME_PATH},
-    system_apps::OpenAppEvent,
+    file_system::{FileType, FsError, FsHierarchy, FsPath, HOME_PATH, LockType},
+    scripted_events::UnlockState,
+    system_apps::{Applications, OpenAppEvent},
 };
 
 type CommandFn = fn(&str, &mut FsPath, &mut Vec<String>, &mut FsHierarchy) -> Option<OpenAppEvent>;
@@ -69,6 +70,7 @@ pub fn execute_command(
     cwd: &mut FsPath,
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
+    state: &UnlockState,
 ) -> Option<OpenAppEvent> {
     let mut parts = raw.trim().splitn(2, ' ');
     let cmd = parts.next().unwrap_or("");
@@ -76,6 +78,20 @@ pub fn execute_command(
 
     if cmd.is_empty() {
         return None;
+    }
+
+    match cmd {
+        "bruteforce" if state.bruteforce => return cmd_bruteforce(arg, cwd, history, vfs),
+        "bruteforce" => {
+            history.push("st-os: command not found: bruteforce".into());
+            return None;
+        }
+        "netripper" if state.netripper => return cmd_netripper(arg, cwd, history, vfs),
+        "netripper" => {
+            history.push("st-os: command not found: netripper".into());
+            return None;
+        }
+        _ => {}
     }
 
     if let Some(def) = COMMANDS.iter().find(|c| c.name == cmd) {
@@ -243,6 +259,89 @@ fn cmd_unlock(
         }
     }
     None
+}
+
+fn cmd_netripper(
+    arg: &str,
+    cwd: &mut FsPath,
+    history: &mut Vec<String>,
+    vfs: &mut FsHierarchy,
+) -> Option<OpenAppEvent> {
+    if arg.is_empty() {
+        history.push("usage: netripper <file|dir>".into());
+        return None;
+    }
+
+    let target = cwd.join(arg);
+    match vfs.get_node(&target) {
+        None => {
+            history.push(format!("netripper: {}: No such file or directory", arg));
+            None
+        }
+        Some(node) if !node.is_accessible() => {
+            // Still encrypted/locked — can't transmit what you can't read
+            history.push(format!(
+                "netripper: {}: File is still locked — decrypt it first",
+                arg
+            ));
+            None
+        }
+        Some(node) => {
+            history.push(format!("netripper: initiating transfer of {}...", arg));
+            Some(OpenAppEvent {
+                name: node.name.clone(),
+                app_type: Applications::Decrypter {
+                    path: target,
+                    max_tries: None,
+                    elapsed: 0.0,
+                    minigames_triggered: 0,
+                },
+            })
+        }
+    }
+}
+
+fn cmd_bruteforce(
+    arg: &str,
+    cwd: &mut FsPath,
+    history: &mut Vec<String>,
+    vfs: &mut FsHierarchy,
+) -> Option<OpenAppEvent> {
+    if arg.is_empty() {
+        history.push("usage: bruteforce <file|dir>".into());
+        return None;
+    }
+
+    let target = cwd.join(arg);
+    match vfs.get_node(&target) {
+        None => {
+            history.push(format!("bruteforce: {}: No such file or directory", arg));
+            None
+        }
+        Some(node) if node.is_accessible() => {
+            history.push(format!("bruteforce: {}: File is not encrypted", arg));
+            None
+        }
+        Some(node) if matches!(node.meta.locked, Some(LockType::Password(_))) => {
+            history.push(format!(
+                "bruteforce: {}: File is password-protected, not encrypted — use unlock",
+                arg
+            ));
+            None
+        }
+        Some(node) => {
+            history.push(format!("bruteforce: initiating decryption of {}...", arg));
+            Some(OpenAppEvent {
+                name: node.name.clone(),
+                app_type: Applications::Decrypter {
+                    path: target,
+                    max_tries: None,
+                    elapsed: 0.0,
+                    minigames_triggered: 0,
+                },
+            })
+        }
+    }
 }
 
 // fn cmd_pwd(

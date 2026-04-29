@@ -11,7 +11,7 @@ use crate::{
             Screen,
             desktop::{DesktopTextures, IconTextures},
         },
-        scripted_events::Dialogues,
+        scripted_events::{Dialogues, UnlockState},
         system_apps::{Applications, OpenAppEvent},
         terminal_commands::execute_command,
         window_manager::{OpenWindows, ToggleMinimizeEvent, WindowAction},
@@ -69,6 +69,7 @@ fn show_open_windows(
     scale: Res<DesignScale>,
     time: Res<Time>,
     paused: Res<State<Pause>>,
+    unlock_state: Res<UnlockState>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
     let top_layer_window_id = ctx.memory(|mem| {
@@ -160,9 +161,13 @@ fn show_open_windows(
                                     show_terminal(ui, cwd, history, input, &scale, is_focused)
                                 {
                                     history.push(format!("> {}", cmd_str));
-                                    if let Some(event) =
-                                        execute_command(&cmd_str, cwd, history, &mut *vfs)
-                                    {
+                                    if let Some(event) = execute_command(
+                                        &cmd_str,
+                                        cwd,
+                                        history,
+                                        &mut *vfs,
+                                        &unlock_state,
+                                    ) {
                                         cmd.trigger(event); // cmd here is the Bevy Commands from the system params
                                     }
                                     input.clear();

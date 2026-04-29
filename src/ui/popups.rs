@@ -60,9 +60,6 @@ fn show_popups(
                 SystemAlerts::EncryptedError => {
                     ui.label("File/Folder is Encrypted");
                 }
-                SystemAlerts::UninitalizedChat => {
-                    ui.label("Chatbox not initialized.");
-                }
             });
         if close_requested {
             entry.is_open = false;

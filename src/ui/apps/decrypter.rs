@@ -1,7 +1,7 @@
 use bevy_egui::egui::{self, Color32};
 
 use crate::ui::theme::{
-    palette::{BUTTON_HOVERED_BG, HEADER_COLOR, LABEL_COLOR},
+    palette::{HEADER_COLOR, LABEL_COLOR},
     widgets::primitives::progress_bar,
 };
 

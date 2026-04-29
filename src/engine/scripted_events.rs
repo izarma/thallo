@@ -293,10 +293,6 @@ impl Dialogues {
     pub fn add_lines(&mut self, lines: Vec<DialogueLine>) {
         self.lines.extend(lines);
     }
-    // why is this needed - if needed why not used?
-    pub fn has_unplayed(&self) -> bool {
-        self.index < self.lines.len()
-    }
 }
 
 fn check_dialogue_triggers(

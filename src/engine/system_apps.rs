@@ -109,7 +109,6 @@ pub enum ChatBoxState {
 #[derive(Debug, Clone)]
 pub enum SystemAlerts {
     FileTransfer(NewFileReceiving),
-    UninitalizedChat,
     EncryptedError,
 }
 
