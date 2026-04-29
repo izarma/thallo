@@ -26,12 +26,19 @@ pub(super) fn plugin(app: &mut App) {
 pub enum ScriptedEventTrigger {
     OpenChat,
     FileTrigger(String),
-    ChatTrigger(ChatTriggerType), // add required shit later
+    ChatTrigger(ChatTriggerType),
+    BeginReboot(RebootSequence),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ChatTriggerType {
     FileTransfer(NewFileReceiving),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RebootSequence {
+    NetworkConnect,
+    ActTrans,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -45,6 +52,8 @@ pub struct UnlockState {
     pub chat: bool,
     pub bruteforce: bool,
     pub netripper: bool,
+    pub network_reconnected: bool,
+    pub act: bool, // 2 is true
 }
 
 fn on_scripted_event(
@@ -53,11 +62,15 @@ fn on_scripted_event(
     mut cmd: Commands,
     mut triggers: ResMut<FileDialogueTriggers>,
     mut dialogues: ResMut<Dialogues>,
+    mut next_screen: ResMut<NextState<Screen>>,
 ) {
     match ev.clone() {
         ScriptedEventTrigger::OpenChat => effect_unlock_chat(&mut state, &mut cmd),
         ScriptedEventTrigger::FileTrigger(name) => {
             effect_file_trigger(name, &mut triggers, &mut dialogues, &mut cmd)
+        }
+        ScriptedEventTrigger::BeginReboot(boot) => {
+            effect_reboot(&mut state, boot, &mut next_screen)
         }
         ScriptedEventTrigger::ChatTrigger(trigger) => match trigger {
             ChatTriggerType::FileTransfer(recv) => effect_open_file_transfer_alert(&mut cmd, recv),
@@ -74,6 +87,7 @@ pub struct DialogueTrigger {
     pub files: Vec<String>,
     pub oper: FileTriggerOperation,
     pub lines: Vec<DialogueLine>,
+    pub on_complete: Option<ScriptedEventTrigger>,
     fired: bool,
 }
 
@@ -94,12 +108,30 @@ impl FileDialogueTriggers {
             files: files.iter().map(|s| s.to_string()).collect(),
             oper,
             lines,
+            on_complete: None,
             fired: false,
         });
     }
-    pub fn notify_opened(&mut self, name: &str) -> Vec<DialogueLine> {
+    pub fn register_event(
+        &mut self,
+        files: &[&str],
+        oper: FileTriggerOperation,
+        event: ScriptedEventTrigger,
+    ) {
+        self.triggers.push(DialogueTrigger {
+            files: files.iter().map(|s| s.to_string()).collect(),
+            oper,
+            lines: vec![],
+            on_complete: Some(event),
+            fired: false,
+        });
+    }
+    pub fn notify_opened(&mut self, name: &str) -> (Vec<DialogueLine>, Vec<ScriptedEventTrigger>) {
         self.opened.insert(name.to_string());
         let opened = &self.opened;
+        let mut lines = Vec::new();
+        let mut events = Vec::new();
+
         let mut result = Vec::new();
         for trigger in self.triggers.iter_mut().filter(|t| !t.fired) {
             let ready = match trigger.oper {
@@ -109,9 +141,13 @@ impl FileDialogueTriggers {
             if ready {
                 trigger.fired = true;
                 result.extend(trigger.lines.iter().cloned());
+                lines.extend(trigger.lines.iter().cloned());
+                if let Some(ev) = trigger.on_complete.clone() {
+                    events.push(ev);
+                }
             }
         }
-        result
+        (lines, events)
     }
 }
 
@@ -132,10 +168,13 @@ fn effect_file_trigger(
     dialogues: &mut Dialogues,
     cmd: &mut Commands,
 ) {
-    let new_lines = triggers.notify_opened(&name);
+    let (new_lines, direct_events) = triggers.notify_opened(&name);
     if !new_lines.is_empty() {
         dialogues.add_lines(new_lines);
         cmd.trigger(open_chatbox());
+    }
+    for ev in direct_events {
+        cmd.trigger(ev);
     }
 }
 
@@ -145,6 +184,25 @@ fn effect_open_file_transfer_alert(cmd: &mut Commands, recv: NewFileReceiving) {
         "Incoming Transfer".to_string(),
         SystemAlerts::FileTransfer(recv),
     ));
+}
+
+fn effect_reboot(
+    state: &mut UnlockState,
+    boot: RebootSequence,
+    next_screen: &mut NextState<Screen>,
+) {
+    match boot {
+        RebootSequence::NetworkConnect => {
+            state.network_reconnected = true;
+            info!("network reconnected?");
+            next_screen.set(Screen::ActBreak);
+        }
+        RebootSequence::ActTrans => {
+            state.act = true;
+            info!("act switch");
+            next_screen.set(Screen::ActBreak);
+        }
+    }
 }
 
 fn open_chatbox() -> OpenAppEvent {

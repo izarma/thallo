@@ -11,9 +11,9 @@ use crate::engine::{
 /// How far down the decorative header strip extends — skip past it.
 const HEADER_RATIO: f32 = 0.200;
 /// Height of the bottom status bar region.
-const STATUS_RATIO: f32 = 0.345;
+const STATUS_RATIO: f32 = 0.402;
 /// Width of the right contact-panel sidebar (logo area).
-const SIDEBAR_RATIO: f32 = 0.252;
+const SIDEBAR_RATIO: f32 = 0.288;
 
 /// Seconds between each character appearing for anon's message.
 const TYPING_SPEED: f32 = 18.0; // chars / second
@@ -132,8 +132,8 @@ fn render_messages(
     state: &ChatBoxState,
     scale: &DesignScale,
 ) {
-    let font = FontId::proportional(scale.py(12.5));
-    let font_sm = FontId::proportional(scale.py(10.5));
+    let font = FontId::proportional(scale.py(14.0));
+    let font_sm = FontId::proportional(scale.py(12.5));
 
     let mut msg_ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
     egui::Frame::new()
@@ -190,7 +190,7 @@ fn render_status_bar(
     is_focused: bool,
 ) -> bool {
     let mut send = false;
-    let font = FontId::proportional(scale.py(11.5));
+    let font = FontId::proportional(scale.py(14.0));
 
     // Paint a solid fill over the baked-in "Status: Online" text so our
     // overlay is readable regardless of window state.
@@ -225,7 +225,7 @@ fn render_status_bar(
                     let ready_to_send = *chars_revealed >= total_chars;
                     ui.label(
                         RichText::new(if input.is_empty() {
-                            "…"
+                            "[PRESS ANY KEYS TO TYPE THE RESPONSE]"
                         } else {
                             input.as_str()
                         })

@@ -1,6 +1,6 @@
+use crate::engine::{asset_tracking::LoadResource, audio::sound_effect, screens::Screen};
 use bevy::prelude::*;
-
-use crate::{engine::asset_tracking::LoadResource, engine::audio::sound_effect};
+use rand::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_observer(apply_interaction_palette_on_click);
@@ -11,6 +11,11 @@ pub(super) fn plugin(app: &mut App) {
     app.load_resource::<InteractionAssets>();
     app.add_observer(play_sound_effect_on_click);
     app.add_observer(play_sound_effect_on_over);
+
+    app.add_systems(
+        Update,
+        play_sound_effect_on_keypress.run_if(in_state(Screen::Desktop)),
+    );
 }
 
 /// Palette for widget interactions. Add this to an entity that supports
@@ -74,7 +79,9 @@ struct InteractionAssets {
     #[dependency]
     hover: Handle<AudioSource>,
     #[dependency]
-    click: Handle<AudioSource>,
+    click: Vec<Handle<AudioSource>>,
+    #[dependency]
+    keypress: Vec<Handle<AudioSource>>,
 }
 
 impl FromWorld for InteractionAssets {
@@ -82,7 +89,17 @@ impl FromWorld for InteractionAssets {
         let assets = world.resource::<AssetServer>();
         Self {
             hover: assets.load("audio/sfx/button_hover.ogg"),
-            click: assets.load("audio/sfx/button_click.ogg"),
+            click: vec![
+                assets.load("audio/sfx/mouse1.ogg"),
+                assets.load("audio/sfx/mouse2.ogg"),
+                assets.load("audio/sfx/mouse3.ogg"),
+            ],
+            keypress: vec![
+                assets.load("audio/sfx/key1.ogg"),
+                assets.load("audio/sfx/key2.ogg"),
+                assets.load("audio/sfx/key3.ogg"),
+                assets.load("audio/sfx/key4.ogg"),
+            ],
         }
     }
 }
@@ -92,7 +109,10 @@ fn play_sound_effect_on_click(
     interaction_assets: If<Res<InteractionAssets>>,
     mut commands: Commands,
 ) {
-    commands.spawn(sound_effect(interaction_assets.click.clone()));
+    let mut rng = rand::rng();
+    if let Some(random_click_sfx) = interaction_assets.click.choose(&mut rng) {
+        commands.spawn(sound_effect(random_click_sfx.clone()));
+    }
 }
 
 fn play_sound_effect_on_over(
@@ -101,4 +121,19 @@ fn play_sound_effect_on_over(
     mut commands: Commands,
 ) {
     commands.spawn(sound_effect(interaction_assets.hover.clone()));
+}
+
+fn play_sound_effect_on_keypress(
+    keys: Res<ButtonInput<KeyCode>>,
+    interaction_assets: Option<Res<InteractionAssets>>,
+    mut commands: Commands,
+) {
+    if let Some(assets) = interaction_assets {
+        if keys.get_just_pressed().next().is_some() {
+            let mut rng = rand::rng();
+            if let Some(random_key_sfx) = assets.keypress.choose(&mut rng) {
+                commands.spawn(sound_effect(random_key_sfx.clone()));
+            }
+        }
+    }
 }

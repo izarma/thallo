@@ -39,7 +39,7 @@ pub(crate) fn show_terminal(
     let top_rect = egui::Rect::from_min_max(total_rect.min, egui::pos2(total_rect.max.x, split_y));
     let bot_rect = egui::Rect::from_min_max(egui::pos2(total_rect.min.x, split_y), total_rect.max);
 
-    // ── Top zone: scrollable output ─────────────────────────────────────────
+    // Top zone: scrollable output
     let mut top_ui = ui.new_child(egui::UiBuilder::new().max_rect(top_rect));
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(
@@ -79,7 +79,7 @@ pub(crate) fn show_terminal(
                 });
         });
 
-    // ── Bottom zone: input ──────────────────────────────────────────────────
+    // Bottom zone: input
     let mut bot_ui = ui.new_child(egui::UiBuilder::new().max_rect(bot_rect));
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(

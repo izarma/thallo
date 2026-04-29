@@ -51,6 +51,8 @@ pub struct DesktopAssets {
     #[dependency]
     pub png_minimized: Handle<Image>,
     #[dependency]
+    pub terminal_minimized: Handle<Image>,
+    #[dependency]
     pub start_btn: Handle<Image>,
 }
 
@@ -86,6 +88,7 @@ impl FromWorld for DesktopAssets {
             folder_minimized: assets.load("ui/tabs/folder_minimized.png"),
             txt_minimized: assets.load("ui/tabs/txt_minimized.png"),
             png_minimized: assets.load("ui/tabs/png_minimized.png"),
+            terminal_minimized: assets.load("ui/tabs/terminal_minimized.png"),
             start_btn: assets.load("ui/start_button.png"),
         }
     }
@@ -116,6 +119,7 @@ pub struct DesktopTextures {
     pub folder_minimized: egui::TextureId,
     pub txt_minimized: egui::TextureId,
     pub png_minimized: egui::TextureId,
+    pub terminal_minimized: egui::TextureId,
     pub window: egui::TextureId,
     pub terminal: egui::TextureId,
     pub chatbox: egui::TextureId,
@@ -125,15 +129,15 @@ impl DesktopTextures {
     /// Pick the correct minimised-tab icon for an open window's [`Applications`] kind.
     pub fn icon_for_app(&self, kind: &Applications) -> egui::TextureId {
         match kind {
-            Applications::FileExplorer { .. } | Applications::Unlocker { .. } => {
-                self.folder_minimized
-            }
+            Applications::FileExplorer { .. } => self.folder_minimized,
             Applications::ImageViewer { .. } => self.png_minimized,
             Applications::TextViewer { .. } => self.txt_minimized,
+            Applications::Terminal { .. } => self.terminal_minimized,
             // TODO: swap once art is finalised
-            Applications::Terminal { .. } => self.folder_minimized,
-            Applications::Chatbox { .. } => self.folder_minimized,
-            Applications::Decrypter { .. } => self.folder_minimized,
+            Applications::Chatbox { .. } => self.terminal_minimized,
+            Applications::Decrypter { .. } | Applications::Unlocker { .. } => {
+                self.terminal_minimized
+            }
         }
     }
 }
@@ -159,6 +163,8 @@ fn cache_desktop_textures(
         folder_minimized: contexts.add_image(EguiTextureHandle::Weak(d_ass.folder_minimized.id())),
         txt_minimized: contexts.add_image(EguiTextureHandle::Weak(d_ass.txt_minimized.id())),
         png_minimized: contexts.add_image(EguiTextureHandle::Weak(d_ass.png_minimized.id())),
+        terminal_minimized: contexts
+            .add_image(EguiTextureHandle::Weak(d_ass.terminal_minimized.id())),
         window: contexts.add_image(EguiTextureHandle::Weak(w_ass.window.id())),
         terminal: contexts.add_image(EguiTextureHandle::Weak(w_ass.terminal.id())),
         chatbox: contexts.add_image(EguiTextureHandle::Weak(w_ass.chatbox.id())),

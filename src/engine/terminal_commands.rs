@@ -12,6 +12,7 @@ struct CommandDef {
     handler: CommandFn,
 }
 
+// need to add conditional bruteforce & netripper commands
 const COMMANDS: &[CommandDef] = &[
     CommandDef {
         name: "ls",
@@ -24,18 +25,6 @@ const COMMANDS: &[CommandDef] = &[
         args: "<dir>",
         desc: "change directory (.. to go up, ~ for home)",
         handler: cmd_cd,
-    },
-    CommandDef {
-        name: "pwd",
-        args: "",
-        desc: "print current directory path",
-        handler: cmd_pwd,
-    },
-    CommandDef {
-        name: "cat",
-        args: "<file>",
-        desc: "print contents of a text file",
-        handler: cmd_cat,
     },
     CommandDef {
         name: "open",
@@ -61,6 +50,18 @@ const COMMANDS: &[CommandDef] = &[
         desc: "show this message",
         handler: cmd_help,
     },
+    // CommandDef {
+    //     name: "pwd",
+    //     args: "",
+    //     desc: "print current directory path",
+    //     handler: cmd_pwd,
+    // },
+    // CommandDef {
+    //     name: "cat",
+    //     args: "<file>",
+    //     desc: "print contents of a text file",
+    //     handler: cmd_cat,
+    // },
 ];
 
 pub fn execute_command(
@@ -137,40 +138,6 @@ fn cmd_cd(
         }
         Some(_) => history.push(format!("cd: {}: Not a directory", arg)),
         None => history.push(format!("cd: {}: No such file or directory", arg)),
-    }
-    None
-}
-
-fn cmd_pwd(
-    _arg: &str,
-    cwd: &mut FsPath,
-    history: &mut Vec<String>,
-    _vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
-    history.push(cwd.to_string());
-    None
-}
-
-fn cmd_cat(
-    arg: &str,
-    cwd: &mut FsPath,
-    history: &mut Vec<String>,
-    vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
-    let target = cwd.join(arg);
-    match vfs.get_node(&target) {
-        Some(node) if !node.is_accessible() => {
-            history.push(format!("cat: {}: Permission denied", arg));
-        }
-        Some(node) => match node.read_text() {
-            Ok(text) => {
-                for line in text.lines() {
-                    history.push(line.to_string());
-                }
-            }
-            Err(e) => history.push(format!("cat: {}: {}", arg, e)),
-        },
-        None => history.push(format!("cat: {}: No such file or directory", arg)),
     }
     None
 }
@@ -277,3 +244,37 @@ fn cmd_unlock(
     }
     None
 }
+
+// fn cmd_pwd(
+//     _arg: &str,
+//     cwd: &mut FsPath,
+//     history: &mut Vec<String>,
+//     _vfs: &mut FsHierarchy,
+// ) -> Option<OpenAppEvent> {
+//     history.push(cwd.to_string());
+//     None
+// }
+
+// fn cmd_cat(
+//     arg: &str,
+//     cwd: &mut FsPath,
+//     history: &mut Vec<String>,
+//     vfs: &mut FsHierarchy,
+// ) -> Option<OpenAppEvent> {
+//     let target = cwd.join(arg);
+//     match vfs.get_node(&target) {
+//         Some(node) if !node.is_accessible() => {
+//             history.push(format!("cat: {}: Permission denied", arg));
+//         }
+//         Some(node) => match node.read_text() {
+//             Ok(text) => {
+//                 for line in text.lines() {
+//                     history.push(line.to_string());
+//                 }
+//             }
+//             Err(e) => history.push(format!("cat: {}: {}", arg, e)),
+//         },
+//         None => history.push(format!("cat: {}: No such file or directory", arg)),
+//     }
+//     None
+// }

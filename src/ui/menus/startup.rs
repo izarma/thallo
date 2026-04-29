@@ -11,6 +11,14 @@ pub(super) fn plugin(app: &mut App) {
         EguiPrimaryContextPass,
         startup_ui.run_if(in_state(Menu::Startup)),
     );
+    app.add_systems(
+        EguiPrimaryContextPass,
+        connet_sunday_title.run_if(in_state(Menu::ConnectedSunday)),
+    );
+    app.add_systems(
+        EguiPrimaryContextPass,
+        act2_title.run_if(in_state(Menu::Act2Startup)),
+    );
 }
 
 fn startup_ui(
@@ -39,5 +47,38 @@ fn startup_ui(
         }
     });
 
+    Ok(())
+}
+
+fn connet_sunday_title(
+    mut contexts: EguiContexts,
+    mut next_screen: ResMut<NextState<Screen>>,
+    mut next_menu: ResMut<NextState<Menu>>,
+) -> Result {
+    let ctx = contexts.ctx_mut()?;
+    primitives::centered_panel(ctx, "reconnect_menu", |ui| {
+        primitives::header(ui, "SUNDAY NETWORK");
+        primitives::label(ui, "Terminal reconnected. Incoming sync detected.");
+        if primitives::button(ui, "Connect").clicked() {
+            next_screen.set(Screen::Loading);
+            next_menu.set(Menu::None);
+        }
+    });
+    Ok(())
+}
+
+// need to fix this with proper content
+fn act2_title(
+    mut contexts: EguiContexts,
+    mut next_screen: ResMut<NextState<Screen>>,
+    mut next_menu: ResMut<NextState<Menu>>,
+) -> Result {
+    let ctx = contexts.ctx_mut()?;
+    primitives::centered_panel(ctx, "act2_title", |ui| {
+        if primitives::button(ui, "Power On").clicked() {
+            next_screen.set(Screen::Loading);
+            next_menu.set(Menu::None);
+        }
+    });
     Ok(())
 }

@@ -5026,6 +5026,7 @@ dependencies = [
  "bevy_egui",
  "chrono",
  "log",
+ "rand",
  "tracing",
  "uuid",
  "vleue_kinetoscope",

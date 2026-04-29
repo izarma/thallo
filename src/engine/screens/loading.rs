@@ -6,9 +6,10 @@ use vleue_kinetoscope::{AnimatedImagePlugin, AnimationPlayed, StreamingAnimatedI
 
 use crate::engine::{
     asset_tracking::ResourceHandles,
+    audio::sound_effect,
     screens::{
-        desktop::{DesktopAssets, DesktopTextures},
         Screen,
+        desktop::{DesktopAssets, DesktopTextures},
     },
 };
 
@@ -38,6 +39,7 @@ fn spawn_startup(
             handle: assets.load("ui/cursors/cursor_loading.png"),
             ..default()
         })),));
+    cmd.spawn(sound_effect(assets.load("audio/sfx/bootup.ogg")));
     cmd.spawn((
         StreamingAnimatedImageController::play(assets.load("ui/startup.gif")),
         DespawnOnEnter(Screen::Desktop),
