@@ -1,6 +1,6 @@
 use crate::engine::{
     file_system::{FileType, FsError, FsHierarchy, FsPath, HOME_PATH, LockType},
-    scripted_events::UnlockState,
+    scripted_events::{ScriptedEventTrigger, UnlockState},
     system_apps::{Applications, OpenAppEvent},
 };
 
@@ -79,7 +79,7 @@ pub fn execute_command(
             history.push("st-os: command not found: bruteforce".into());
             return CommandOutput::None;
         }
-        "netripper" if state.netripper => return cmd_netripper(arg, cwd, history, vfs),
+        "netripper" if state.netripper => return cmd_netripper(arg, cwd, history, vfs, state),
         "netripper" => {
             history.push("st-os: command not found: netripper".into());
             return CommandOutput::None;
@@ -259,10 +259,28 @@ fn cmd_netripper(
     cwd: &mut FsPath,
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
+    state: &UnlockState,
 ) -> CommandOutput {
     if arg.is_empty() {
-        history.push("usage: netripper <file|dir>".into());
+        history.push("usage: netripper <file|dir|sos>".into());
         return CommandOutput::None;
+    }
+    if arg.eq_ignore_ascii_case("sos") {
+        if !state.secure_transmitted {
+            history.push("netripper: Invalid Payload".into());
+            return CommandOutput::None;
+        }
+        history.push("netripper: Ripping SOS through spacenet".into());
+        return CommandOutput::OpenApp(OpenAppEvent {
+            name: "SOS Transmission".to_string(),
+            app_type: Applications::Ripper {
+                path: None,
+                max_tries: None,
+                elapsed: 0.0,
+                minigames_triggered: 0,
+                on_complete: Some(ScriptedEventTrigger::TransmitSOS),
+            },
+        });
     }
     let target = cwd.join(arg);
     match vfs.get_node(&target) {
@@ -278,7 +296,11 @@ fn cmd_netripper(
             CommandOutput::None
         }
         Some(node) => {
-            history.push(format!("netripper: initiating transfer of {}...", arg));
+            let on_complete = match node.name.as_str() {
+                "[SECURE]" => Some(ScriptedEventTrigger::TransmitSecure),
+                _ => None,
+            };
+            history.push(format!("netripper: Ripping {}", arg));
             CommandOutput::OpenApp(OpenAppEvent {
                 name: node.name.clone(),
                 app_type: Applications::Ripper {
@@ -286,6 +308,7 @@ fn cmd_netripper(
                     max_tries: None,
                     elapsed: 0.0,
                     minigames_triggered: 0,
+                    on_complete,
                 },
             })
         }
@@ -321,7 +344,7 @@ fn cmd_bruteforce(
             CommandOutput::None
         }
         Some(node) => {
-            history.push(format!("bruteforce: initiating decryption of {}...", arg));
+            history.push(format!("bruteforce: decrypter starting for {}", arg));
             CommandOutput::OpenApp(OpenAppEvent {
                 name: node.name.clone(),
                 app_type: Applications::Decrypter {

@@ -28,6 +28,8 @@ pub enum ScriptedEventTrigger {
     FileTrigger(String),
     ChatTrigger(ChatTriggerType),
     BeginReboot(RebootSequence),
+    TransmitSecure,
+    TransmitSOS,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,6 +56,7 @@ pub struct UnlockState {
     pub netripper: bool,
     pub network_reconnected: bool,
     pub act: bool, // 2 is true
+    pub secure_transmitted: bool,
 }
 
 fn on_scripted_event(
@@ -75,6 +78,10 @@ fn on_scripted_event(
         ScriptedEventTrigger::ChatTrigger(trigger) => match trigger {
             ChatTriggerType::FileTransfer(recv) => effect_open_file_transfer_alert(&mut cmd, recv),
         },
+        ScriptedEventTrigger::TransmitSecure => {
+            effect_transmit_secure(&mut state, &mut dialogues, &mut cmd)
+        }
+        ScriptedEventTrigger::TransmitSOS => effect_transmit_sos(&mut dialogues),
     }
 }
 
@@ -154,7 +161,7 @@ impl FileDialogueTriggers {
 // Trigger Effects
 
 fn effect_unlock_chat(state: &mut UnlockState, cmd: &mut Commands) {
-    if state.chat {
+    if state.chat && !state.act {
         return;
     }
     state.chat = true;
@@ -310,4 +317,26 @@ fn check_dialogue_triggers(
         }
     }
     *last_index = dialogues.index;
+}
+
+fn effect_transmit_secure(state: &mut UnlockState, dialogues: &mut Dialogues, cmd: &mut Commands) {
+    if state.secure_transmitted {
+        return;
+    }
+    state.secure_transmitted = true;
+    dialogues.add_lines(vec![
+        DialogueLine::new(false, "It should've reached Earth hopefully"),
+        DialogueLine::new(true, "now what?"),
+        DialogueLine::new(false, "Lets send an SOS, and best we can do is hope. Use the netripper sos command from your terminal"),
+    ]);
+    cmd.trigger(open_chatbox());
+}
+
+fn effect_transmit_sos(dialogues: &mut Dialogues) {
+    info!("[Story] SOS transmitted — ending act");
+    dialogues.add_lines(vec![
+        DialogueLine::new(false, "I guess this is it then."),
+        DialogueLine::new(true, "yeah I geuess it is.")
+            .on_complete(ScriptedEventTrigger::BeginReboot(RebootSequence::ActTrans)),
+    ]);
 }

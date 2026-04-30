@@ -3,7 +3,7 @@ use bevy_egui::egui;
 
 use crate::engine::{
     file_system::FsPath,
-    scripted_events::UnlockState,
+    scripted_events::{ScriptedEventTrigger, UnlockState},
     system_apps::{Applications, ChatBoxState, OpenAlertEvent, OpenAppEvent, SystemAlerts},
 };
 
@@ -125,4 +125,5 @@ pub enum WindowAction {
     DecryptComplete {
         path: FsPath,
     },
+    RipperComplete(Option<ScriptedEventTrigger>),
 }

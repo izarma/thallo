@@ -22,6 +22,7 @@ use crate::{
             decrypter::show_encrypted,
             file_explorer::show_file_explorer,
             image_viewer::show_image_viewer,
+            ripper::show_netripper_transmit,
             terminal::show_terminal,
             text_viewer::show_text_viewer,
             unlocker::show_unlocker,
@@ -34,6 +35,7 @@ mod chatbox;
 mod decrypter;
 mod file_explorer;
 mod image_viewer;
+mod ripper;
 pub mod settings_menu;
 mod terminal;
 mod text_viewer;
@@ -230,23 +232,29 @@ fn show_open_windows(
                             }
                             Applications::Ripper {
                                 path,
-                                max_tries: _, // check later
                                 elapsed,
                                 minigames_triggered,
+                                on_complete,
+                                ..
                             } => {
-                                let output =
-                                    show_encrypted(ui, elapsed, minigames_triggered, dt, paused.0);
+                                let target =
+                                    path.as_ref().map(|p| p.file_name()).unwrap_or("UNKNOWN");
+                                let output = show_netripper_transmit(
+                                    ui,
+                                    target,
+                                    elapsed,
+                                    minigames_triggered,
+                                    dt,
+                                    paused.0,
+                                );
                                 if let Some(idx) = output.triggered_checkpoint {
                                     cmd.trigger(MinigameTrigger {
                                         checkpoint: idx,
                                         game_type: MinigameType::NetRipper,
                                     });
                                 }
-
-                                if output.complete && path.is_some() {
-                                    WindowAction::DecryptComplete {
-                                        path: path.clone().unwrap(),
-                                    }
+                                if output.complete {
+                                    WindowAction::RipperComplete(on_complete.clone())
                                 } else {
                                     WindowAction::None
                                 }
@@ -316,6 +324,12 @@ fn show_open_windows(
                 } else {
                     debug!("Failed to crack encrypted node at {}", path);
                 }
+            }
+            WindowAction::RipperComplete(event) => {
+                if let Some(ev) = event {
+                    cmd.trigger(ev);
+                }
+                entry.is_open = false;
             }
             WindowAction::Select(new_selection) => {
                 if let Applications::FileExplorer { selected_item, .. } = &mut entry.event.app_type

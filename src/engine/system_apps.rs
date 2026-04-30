@@ -3,7 +3,7 @@ use bevy_egui::egui::{TextureId, Vec2};
 
 use crate::engine::{
     file_system::{FileType, FsNode, FsPath, LockType},
-    scripted_events::{DialogueLine, NewFileReceiving},
+    scripted_events::{DialogueLine, NewFileReceiving, ScriptedEventTrigger},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,6 +36,7 @@ pub enum Applications {
         max_tries: Option<u8>,
         elapsed: f32,
         minigames_triggered: u8,
+        on_complete: Option<ScriptedEventTrigger>,
     },
     Terminal {
         // Current Working Directory
