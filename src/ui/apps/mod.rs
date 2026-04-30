@@ -13,7 +13,7 @@ use crate::{
         },
         scripted_events::{Dialogues, UnlockState},
         system_apps::{Applications, OpenAppEvent},
-        terminal_commands::execute_command,
+        terminal_commands::{CommandOutput, execute_command},
         window_manager::{OpenWindows, ToggleMinimizeEvent, WindowAction},
     },
     ui::{
@@ -161,14 +161,18 @@ fn show_open_windows(
                                     show_terminal(ui, cwd, history, input, &scale, is_focused)
                                 {
                                     history.push(format!("> {}", cmd_str));
-                                    if let Some(event) = execute_command(
+                                    let cmd_output = execute_command(
                                         &cmd_str,
                                         cwd,
                                         history,
                                         &mut *vfs,
                                         &unlock_state,
-                                    ) {
-                                        cmd.trigger(event); // cmd here is the Bevy Commands from the system params
+                                    );
+                                    match cmd_output {
+                                        CommandOutput::OpenApp(event) => {
+                                            cmd.trigger(event);
+                                        }
+                                        CommandOutput::None => {}
                                     }
                                     input.clear();
                                 }
@@ -205,7 +209,7 @@ fn show_open_windows(
                             }
                             Applications::Decrypter {
                                 path,
-                                max_tries,
+                                max_tries: _, // check later
                                 elapsed,
                                 minigames_triggered,
                             } => {
@@ -220,6 +224,29 @@ fn show_open_windows(
 
                                 if output.complete {
                                     WindowAction::DecryptComplete { path: path.clone() }
+                                } else {
+                                    WindowAction::None
+                                }
+                            }
+                            Applications::Ripper {
+                                path,
+                                max_tries: _, // check later
+                                elapsed,
+                                minigames_triggered,
+                            } => {
+                                let output =
+                                    show_encrypted(ui, elapsed, minigames_triggered, dt, paused.0);
+                                if let Some(idx) = output.triggered_checkpoint {
+                                    cmd.trigger(MinigameTrigger {
+                                        checkpoint: idx,
+                                        game_type: MinigameType::NetRipper,
+                                    });
+                                }
+
+                                if output.complete && path.is_some() {
+                                    WindowAction::DecryptComplete {
+                                        path: path.clone().unwrap(),
+                                    }
                                 } else {
                                     WindowAction::None
                                 }

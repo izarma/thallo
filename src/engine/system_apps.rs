@@ -31,6 +31,12 @@ pub enum Applications {
         /// Bitmask — bit N is set once minigame checkpoint N has been triggered.
         minigames_triggered: u8,
     },
+    Ripper {
+        path: Option<FsPath>,
+        max_tries: Option<u8>,
+        elapsed: f32,
+        minigames_triggered: u8,
+    },
     Terminal {
         // Current Working Directory
         cwd: FsPath,
@@ -52,6 +58,7 @@ impl Applications {
             Applications::ImageViewer { .. } => "Image Viewer",
             Applications::Unlocker { .. } => "Locked",
             Applications::Decrypter { .. } => "Encrypted",
+            Applications::Ripper { .. } => "NetRipper",
             Applications::Terminal { .. } => "Terminal",
             Applications::Chatbox { .. } => "Chatbox",
         }

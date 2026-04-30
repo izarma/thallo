@@ -14,7 +14,10 @@ use crate::{
         window_manager::OpenWindows,
     },
     game::{
-        dialogues::{build_act1_file_triggers, build_dialogues, build_netconn_file_triggers},
+        dialogues::{
+            build_act1_dialogues, build_act1_file_triggers, build_act2_dialogues,
+            build_netconn_file_triggers,
+        },
         files::{build_fs, inject_secure_folder, strip_to_secure},
     },
 };
@@ -64,7 +67,7 @@ fn setup_stuffs(
 ) {
     cmd.spawn((music(assets.ac1bg.clone()), DespawnOnExit(Screen::Desktop)));
     cmd.insert_resource(build_fs());
-    cmd.insert_resource(build_dialogues());
+    cmd.insert_resource(build_act1_dialogues());
     build_act1_file_triggers(&mut file_triggers);
 }
 
@@ -91,6 +94,7 @@ fn connect_sunday_net(
 }
 
 fn setup_act2(
+    mut cmd: Commands,
     mut vfs: ResMut<FsHierarchy>,
     mut open_windows: ResMut<OpenWindows>,
     mut file_triggers: ResMut<FileDialogueTriggers>,
@@ -98,4 +102,5 @@ fn setup_act2(
     strip_to_secure(&mut vfs);
     open_windows.windows.clear();
     file_triggers.triggers.clear();
+    cmd.insert_resource(build_act2_dialogues());
 }

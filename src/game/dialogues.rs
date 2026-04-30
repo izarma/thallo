@@ -3,7 +3,7 @@ use crate::engine::scripted_events::{
     NewFileReceiving, RebootSequence, ScriptedEventTrigger,
 };
 
-pub(super) fn build_dialogues() -> Dialogues {
+pub(super) fn build_act1_dialogues() -> Dialogues {
     Dialogues {
         lines: vec![
             DialogueLine::new(false, "Hey, you’re in?").on_complete(
@@ -79,7 +79,11 @@ pub(super) fn build_act1_file_triggers(file_triggers: &mut FileDialogueTriggers)
             DialogueLine::new(true, "i mean it doesnt make sense. there cant be a possibility that one part of the crew just suddenly hallucinates?"),
             DialogueLine::new(false, "Well, it’s either that or there is something wrong here. We probably need to dig deeper. There should be another encrypted folder on the desktop."),
             DialogueLine::new(true, "yeah, there is. any ideas how to open this?"),
-            DialogueLine::new(false, "Well, this one guy I know helped me out and sent some sort of a brute force file. Might come in handy on your side. Sending it right now."),
+            DialogueLine::new(false, "Well, this one guy I know helped me out and sent some sort of a brute force file. Might come in handy on your side. Sending it right now.").on_complete(
+                ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(
+                    NewFileReceiving::BruteForce,
+                )),
+            ),
             DialogueLine::new(false, "Try Opening the Encrypted Folder now"),
         ],
     );
@@ -100,7 +104,9 @@ pub(super) fn build_act1_file_triggers(file_triggers: &mut FileDialogueTriggers)
             DialogueLine::new(false, "And how do you think we’ll do that, Ms. “I wanna know the truth”?"),
             DialogueLine::new(true, "connect me back."),
             DialogueLine::new(false, "NO. If you want to get your head blown off in next few days – be my guest and do it yourself. You know the consequences. I’m NOT taking this much risk."),
-            DialogueLine::new(true, "fuck you then."),
+            DialogueLine::new(true, "fuck you then.").on_complete(
+                ScriptedEventTrigger::BeginReboot(RebootSequence::NetworkConnect),
+            ),
         ],
     );
 }
@@ -111,4 +117,21 @@ pub(super) fn build_netconn_file_triggers(file_triggers: &mut FileDialogueTrigge
         FileTriggerOperation::All,
         ScriptedEventTrigger::BeginReboot(RebootSequence::ActTrans),
     );
+}
+
+pub(super) fn build_act2_dialogues() -> Dialogues {
+    Dialogues {
+        lines: vec![
+            DialogueLine::new(false, "Sending you NetRipper").on_complete(
+                ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(
+                    NewFileReceiving::NetRipper,
+                )),
+            ),
+            DialogueLine::new(
+                false,
+                "Once you receive this program, try running it on the folder with your terminal",
+            ),
+        ],
+        index: 0,
+    }
 }

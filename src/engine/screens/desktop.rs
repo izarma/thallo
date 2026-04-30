@@ -28,11 +28,11 @@ pub(super) fn plugin(app: &mut App) {
 #[reflect(Resource)]
 struct IconAssets {
     #[dependency]
-    pub folder: Handle<Image>,
+    folder: Handle<Image>,
     #[dependency]
-    pub txt: Handle<Image>,
+    txt: Handle<Image>,
     #[dependency]
-    pub png: Handle<Image>,
+    png: Handle<Image>,
 }
 
 #[derive(Resource, Asset, Clone, Reflect)]
@@ -52,6 +52,10 @@ pub struct DesktopAssets {
     pub png_minimized: Handle<Image>,
     #[dependency]
     pub terminal_minimized: Handle<Image>,
+    #[dependency]
+    pub chat_minimized: Handle<Image>,
+    #[dependency]
+    pub hack_minimized: Handle<Image>,
     #[dependency]
     pub start_btn: Handle<Image>,
 }
@@ -89,6 +93,8 @@ impl FromWorld for DesktopAssets {
             txt_minimized: assets.load("ui/tabs/txt_minimized.png"),
             png_minimized: assets.load("ui/tabs/png_minimized.png"),
             terminal_minimized: assets.load("ui/tabs/terminal_minimized.png"),
+            chat_minimized: assets.load("ui/tabs/chatbox_minimized.png"),
+            hack_minimized: assets.load("ui/tabs/hack_minimized.png"),
             start_btn: assets.load("ui/start_button.png"),
         }
     }
@@ -120,6 +126,8 @@ pub struct DesktopTextures {
     pub txt_minimized: egui::TextureId,
     pub png_minimized: egui::TextureId,
     pub terminal_minimized: egui::TextureId,
+    pub chat_minimized: egui::TextureId,
+    pub hack_minimized: egui::TextureId,
     pub window: egui::TextureId,
     pub terminal: egui::TextureId,
     pub chatbox: egui::TextureId,
@@ -133,11 +141,10 @@ impl DesktopTextures {
             Applications::ImageViewer { .. } => self.png_minimized,
             Applications::TextViewer { .. } => self.txt_minimized,
             Applications::Terminal { .. } => self.terminal_minimized,
-            // TODO: swap once art is finalised
-            Applications::Chatbox { .. } => self.terminal_minimized,
-            Applications::Decrypter { .. } | Applications::Unlocker { .. } => {
-                self.terminal_minimized
-            }
+            Applications::Chatbox { .. } => self.chat_minimized,
+            Applications::Decrypter { .. }
+            | Applications::Ripper { .. }
+            | Applications::Unlocker { .. } => self.hack_minimized,
         }
     }
 }
@@ -165,6 +172,8 @@ fn cache_desktop_textures(
         png_minimized: contexts.add_image(EguiTextureHandle::Weak(d_ass.png_minimized.id())),
         terminal_minimized: contexts
             .add_image(EguiTextureHandle::Weak(d_ass.terminal_minimized.id())),
+        chat_minimized: contexts.add_image(EguiTextureHandle::Weak(d_ass.chat_minimized.id())),
+        hack_minimized: contexts.add_image(EguiTextureHandle::Weak(d_ass.hack_minimized.id())),
         window: contexts.add_image(EguiTextureHandle::Weak(w_ass.window.id())),
         terminal: contexts.add_image(EguiTextureHandle::Weak(w_ass.terminal.id())),
         chatbox: contexts.add_image(EguiTextureHandle::Weak(w_ass.chatbox.id())),

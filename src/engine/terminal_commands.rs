@@ -4,7 +4,7 @@ use crate::engine::{
     system_apps::{Applications, OpenAppEvent},
 };
 
-type CommandFn = fn(&str, &mut FsPath, &mut Vec<String>, &mut FsHierarchy) -> Option<OpenAppEvent>;
+type CommandFn = fn(&str, &mut FsPath, &mut Vec<String>, &mut FsHierarchy) -> CommandOutput;
 
 struct CommandDef {
     name: &'static str,
@@ -51,19 +51,12 @@ const COMMANDS: &[CommandDef] = &[
         desc: "show this message",
         handler: cmd_help,
     },
-    // CommandDef {
-    //     name: "pwd",
-    //     args: "",
-    //     desc: "print current directory path",
-    //     handler: cmd_pwd,
-    // },
-    // CommandDef {
-    //     name: "cat",
-    //     args: "<file>",
-    //     desc: "print contents of a text file",
-    //     handler: cmd_cat,
-    // },
 ];
+
+pub enum CommandOutput {
+    None,
+    OpenApp(OpenAppEvent),
+}
 
 pub fn execute_command(
     raw: &str,
@@ -71,25 +64,25 @@ pub fn execute_command(
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
     state: &UnlockState,
-) -> Option<OpenAppEvent> {
+) -> CommandOutput {
     let mut parts = raw.trim().splitn(2, ' ');
     let cmd = parts.next().unwrap_or("");
     let arg = parts.next().unwrap_or("").trim();
 
     if cmd.is_empty() {
-        return None;
+        return CommandOutput::None;
     }
 
     match cmd {
         "bruteforce" if state.bruteforce => return cmd_bruteforce(arg, cwd, history, vfs),
         "bruteforce" => {
             history.push("st-os: command not found: bruteforce".into());
-            return None;
+            return CommandOutput::None;
         }
         "netripper" if state.netripper => return cmd_netripper(arg, cwd, history, vfs),
         "netripper" => {
             history.push("st-os: command not found: netripper".into());
-            return None;
+            return CommandOutput::None;
         }
         _ => {}
     }
@@ -102,7 +95,7 @@ pub fn execute_command(
         if let Some(closest) = COMMANDS.iter().find(|c| c.name.starts_with(&cmd[..1])) {
             history.push(format!("  did you mean: {}?", closest.name));
         }
-        None
+        CommandOutput::None
     }
 }
 
@@ -111,7 +104,7 @@ fn cmd_ls(
     cwd: &mut FsPath,
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
+) -> CommandOutput {
     let target = if arg.is_empty() {
         cwd.clone()
     } else {
@@ -129,7 +122,7 @@ fn cmd_ls(
         Some(_) => history.push(format!("ls: {}: Permission denied", target)),
         None => history.push(format!("ls: {}: No such file or directory", target)),
     }
-    None
+    CommandOutput::None
 }
 
 fn cmd_cd(
@@ -137,7 +130,7 @@ fn cmd_cd(
     cwd: &mut FsPath,
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
+) -> CommandOutput {
     let target = if arg.is_empty() || arg == "~" {
         FsPath::new(HOME_PATH)
     } else if arg == ".." {
@@ -155,7 +148,7 @@ fn cmd_cd(
         Some(_) => history.push(format!("cd: {}: Not a directory", arg)),
         None => history.push(format!("cd: {}: No such file or directory", arg)),
     }
-    None
+    CommandOutput::None
 }
 
 fn cmd_open(
@@ -163,28 +156,28 @@ fn cmd_open(
     cwd: &mut FsPath,
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
+) -> CommandOutput {
     if arg.is_empty() {
         history.push("open: missing operand".into());
-        return None;
+        return CommandOutput::None;
     }
     let target = cwd.join(arg);
     match vfs.get_node(&target) {
         Some(node) if !node.is_accessible() => {
             history.push(format!("open: {}: Permission denied", arg));
-            None
+            CommandOutput::None
         }
         Some(node) => {
             if matches!(node.file_type, FileType::Folder(_)) {
                 *cwd = target;
-                None
+                CommandOutput::None
             } else {
-                Some(OpenAppEvent::from_fsnode(node, target))
+                CommandOutput::OpenApp(OpenAppEvent::from_fsnode(node, target))
             }
         }
         None => {
             history.push(format!("open: {}: No such file or directory", arg));
-            None
+            CommandOutput::None
         }
     }
 }
@@ -194,9 +187,9 @@ fn cmd_clear(
     _cwd: &mut FsPath,
     history: &mut Vec<String>,
     _vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
+) -> CommandOutput {
     history.clear();
-    None
+    CommandOutput::None
 }
 
 fn cmd_help(
@@ -204,7 +197,7 @@ fn cmd_help(
     _cwd: &mut FsPath,
     history: &mut Vec<String>,
     _vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
+) -> CommandOutput {
     history.push("Available commands:".into());
     history.push("".into());
     for cmd in COMMANDS {
@@ -219,7 +212,7 @@ fn cmd_help(
         };
         history.push(entry);
     }
-    None
+    CommandOutput::None
 }
 
 fn cmd_unlock(
@@ -227,14 +220,14 @@ fn cmd_unlock(
     cwd: &mut FsPath,
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
+) -> CommandOutput {
     let mut parts = arg.splitn(2, ' ');
     let path_str = parts.next().unwrap_or("").trim();
     let password = parts.next().unwrap_or("").trim();
 
     if path_str.is_empty() || password.is_empty() {
         history.push("usage: unlock <file|dir> <password>".into());
-        return None;
+        return CommandOutput::None;
     }
 
     let target = cwd.join(path_str);
@@ -258,7 +251,7 @@ fn cmd_unlock(
             history.push(format!("unlock: {}: {}", path_str, e));
         }
     }
-    None
+    CommandOutput::None
 }
 
 fn cmd_netripper(
@@ -266,32 +259,30 @@ fn cmd_netripper(
     cwd: &mut FsPath,
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
+) -> CommandOutput {
     if arg.is_empty() {
         history.push("usage: netripper <file|dir>".into());
-        return None;
+        return CommandOutput::None;
     }
-
     let target = cwd.join(arg);
     match vfs.get_node(&target) {
         None => {
             history.push(format!("netripper: {}: No such file or directory", arg));
-            None
+            CommandOutput::None
         }
         Some(node) if !node.is_accessible() => {
-            // Still encrypted/locked — can't transmit what you can't read
             history.push(format!(
-                "netripper: {}: File is still locked — decrypt it first",
+                "netripper: {}: Decrypt the file first before transmitting",
                 arg
             ));
-            None
+            CommandOutput::None
         }
         Some(node) => {
             history.push(format!("netripper: initiating transfer of {}...", arg));
-            Some(OpenAppEvent {
+            CommandOutput::OpenApp(OpenAppEvent {
                 name: node.name.clone(),
-                app_type: Applications::Decrypter {
-                    path: target,
+                app_type: Applications::Ripper {
+                    path: Some(target),
                     max_tries: None,
                     elapsed: 0.0,
                     minigames_triggered: 0,
@@ -306,32 +297,32 @@ fn cmd_bruteforce(
     cwd: &mut FsPath,
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
-) -> Option<OpenAppEvent> {
+) -> CommandOutput {
     if arg.is_empty() {
         history.push("usage: bruteforce <file|dir>".into());
-        return None;
+        return CommandOutput::None;
     }
 
     let target = cwd.join(arg);
     match vfs.get_node(&target) {
         None => {
             history.push(format!("bruteforce: {}: No such file or directory", arg));
-            None
+            CommandOutput::None
         }
         Some(node) if node.is_accessible() => {
             history.push(format!("bruteforce: {}: File is not encrypted", arg));
-            None
+            CommandOutput::None
         }
         Some(node) if matches!(node.meta.locked, Some(LockType::Password(_))) => {
             history.push(format!(
                 "bruteforce: {}: File is password-protected, not encrypted — use unlock",
                 arg
             ));
-            None
+            CommandOutput::None
         }
         Some(node) => {
             history.push(format!("bruteforce: initiating decryption of {}...", arg));
-            Some(OpenAppEvent {
+            CommandOutput::OpenApp(OpenAppEvent {
                 name: node.name.clone(),
                 app_type: Applications::Decrypter {
                     path: target,
@@ -343,37 +334,3 @@ fn cmd_bruteforce(
         }
     }
 }
-
-// fn cmd_pwd(
-//     _arg: &str,
-//     cwd: &mut FsPath,
-//     history: &mut Vec<String>,
-//     _vfs: &mut FsHierarchy,
-// ) -> Option<OpenAppEvent> {
-//     history.push(cwd.to_string());
-//     None
-// }
-
-// fn cmd_cat(
-//     arg: &str,
-//     cwd: &mut FsPath,
-//     history: &mut Vec<String>,
-//     vfs: &mut FsHierarchy,
-// ) -> Option<OpenAppEvent> {
-//     let target = cwd.join(arg);
-//     match vfs.get_node(&target) {
-//         Some(node) if !node.is_accessible() => {
-//             history.push(format!("cat: {}: Permission denied", arg));
-//         }
-//         Some(node) => match node.read_text() {
-//             Ok(text) => {
-//                 for line in text.lines() {
-//                     history.push(line.to_string());
-//                 }
-//             }
-//             Err(e) => history.push(format!("cat: {}: {}", arg, e)),
-//         },
-//         None => history.push(format!("cat: {}: No such file or directory", arg)),
-//     }
-//     None
-// }
