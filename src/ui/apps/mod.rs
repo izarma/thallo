@@ -11,7 +11,7 @@ use crate::{
             Screen,
             desktop::{DesktopTextures, IconTextures},
         },
-        scripted_events::{Dialogues, UnlockState},
+        scripted_events::{Dialogues, ScriptedEventTrigger, UnlockState},
         system_apps::{Applications, OpenAppEvent},
         terminal_commands::{CommandOutput, execute_command},
         window_manager::{OpenWindows, ToggleMinimizeEvent, WindowAction},
@@ -325,12 +325,18 @@ fn show_open_windows(
                     debug!("Failed to crack encrypted node at {}", path);
                 }
             }
-            WindowAction::RipperComplete(event) => {
-                if let Some(ev) = event {
-                    cmd.trigger(ev);
+            WindowAction::RipperComplete(event) => match event {
+                Some(ScriptedEventTrigger::RipperFailed) => {
+                    cmd.trigger(ScriptedEventTrigger::RipperFailed);
+                    entry.is_open = false;
                 }
-                entry.is_open = false;
-            }
+                other => {
+                    if let Some(ev) = other {
+                        cmd.trigger(ev);
+                    }
+                    entry.is_open = false;
+                }
+            },
             WindowAction::Select(new_selection) => {
                 if let Applications::FileExplorer { selected_item, .. } = &mut entry.event.app_type
                 {

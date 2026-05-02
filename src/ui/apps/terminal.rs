@@ -15,7 +15,6 @@ const BOOT_LINES: &[&str] = &[
     "ST-OS v4.2.0 [CLASSIFIED BUILD]",
     "Research Division Terminal Access",
     "WARNING: Unauthorized access is a federal offense.",
-    "Session logging is active.",
     "",
     "Authenticating...",
     "Access granted. Welcome, OPERATOR.",
@@ -97,18 +96,10 @@ pub(crate) fn show_terminal(
             );
             ui.add_space(4.0);
 
-            // CWD breadcrumb
-            ui.label(
-                RichText::new(format!("  DIR: {}", cwd.as_str()))
-                    .font(font_sm.clone())
-                    .color(COLOR_DIM),
-            );
-            ui.add_space(2.0);
-
             // Prompt + input field
             ui.horizontal(|ui| {
                 ui.label(
-                    RichText::new(format!("OPER@STOS:{}/>", cwd.as_str())) // need to use cwd here
+                    RichText::new(format!("OPER@ST-OS:{}/>", cwd.as_str()))
                         .font(font.clone())
                         .color(COLOR_PROMPT),
                 );

@@ -4,8 +4,10 @@ use bevy::prelude::*;
 
 use crate::engine::{
     CoreSystems,
-    screens::Screen,
+    audio::sound_effect,
+    screens::{Screen, desktop::DesktopAssets},
     system_apps::{Applications, ChatBoxState, OpenAlertEvent, OpenAppEvent, SystemAlerts},
+    window_manager::OpenWindows,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -16,7 +18,11 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Desktop), schedule_open_chat);
     app.add_systems(
         Update,
-        (tick_delayed_events, check_dialogue_triggers)
+        (
+            tick_delayed_events,
+            check_dialogue_triggers,
+            notify_chatbox_minimized,
+        )
             .in_set(CoreSystems::Logic)
             .run_if(in_state(Screen::Desktop)),
     );
@@ -30,6 +36,7 @@ pub enum ScriptedEventTrigger {
     BeginReboot(RebootSequence),
     TransmitSecure,
     TransmitSOS,
+    RipperFailed,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -82,6 +89,7 @@ fn on_scripted_event(
             effect_transmit_secure(&mut state, &mut dialogues, &mut cmd)
         }
         ScriptedEventTrigger::TransmitSOS => effect_transmit_sos(&mut dialogues),
+        ScriptedEventTrigger::RipperFailed => effect_game_over(&mut state, &mut next_screen),
     }
 }
 
@@ -339,4 +347,43 @@ fn effect_transmit_sos(dialogues: &mut Dialogues) {
         DialogueLine::new(true, "yeah I geuess it is.")
             .on_complete(ScriptedEventTrigger::BeginReboot(RebootSequence::ActTrans)),
     ]);
+}
+
+fn effect_game_over(state: &mut UnlockState, next_screen: &mut NextState<Screen>) {
+    // we will go back to act2 start title here - unlockstate needs to be updated accordinly
+    state.netripper = false;
+    state.secure_transmitted = false;
+    next_screen.set(Screen::ActBreak);
+}
+
+fn notify_chatbox_minimized(
+    dialogues: Res<Dialogues>,
+    open_windows: Res<OpenWindows>,
+    desktop_assets: Option<Res<DesktopAssets>>,
+    mut last_line_count: Local<usize>,
+    mut cmd: Commands,
+) {
+    let current = dialogues.lines.len();
+    let previous = *last_line_count;
+    *last_line_count = current;
+
+    // No new lines this frame — nothing to do.
+    if current <= previous {
+        return;
+    }
+
+    let Some(assets) = desktop_assets else { return };
+
+    // Fire only when chatbox is already open but minimised.
+    // If it doesn't exist yet, opening it is notification enough.
+    let is_minimized = open_windows
+        .windows
+        .iter()
+        .find(|w| matches!(w.event.app_type, Applications::Chatbox { .. }))
+        .map(|w| w.is_minimized)
+        .unwrap_or(false);
+
+    if is_minimized {
+        cmd.spawn(sound_effect(assets.msg_notification.clone()));
+    }
 }

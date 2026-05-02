@@ -1,7 +1,7 @@
 use bevy::{
     log::LogPlugin,
     prelude::*,
-    window::{CursorIcon, CustomCursor, CustomCursorImage},
+    window::{CursorIcon, CustomCursor, CustomCursorImage, WindowMode},
 };
 use bevy_egui::{EguiGlobalSettings, EguiPlugin};
 use tracing::Level;
@@ -34,6 +34,7 @@ fn create_window_plugin() -> WindowPlugin {
         primary_window: Some(Window {
             title: "Project Thallo".to_string(),
             resizable: false,
+            mode: WindowMode::BorderlessFullscreen(MonitorSelection::Current),
             ..default()
         }),
         ..default()

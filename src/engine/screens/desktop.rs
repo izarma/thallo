@@ -58,6 +58,8 @@ pub struct DesktopAssets {
     pub hack_minimized: Handle<Image>,
     #[dependency]
     pub start_btn: Handle<Image>,
+    #[dependency]
+    pub msg_notification: Handle<AudioSource>,
 }
 
 #[derive(Resource, Asset, Clone, Reflect)]
@@ -96,6 +98,7 @@ impl FromWorld for DesktopAssets {
             chat_minimized: assets.load("ui/tabs/chatbox_minimized.png"),
             hack_minimized: assets.load("ui/tabs/hack_minimized.png"),
             start_btn: assets.load("ui/start_button.png"),
+            msg_notification: assets.load("audio/sfx/notification.ogg"),
         }
     }
 }

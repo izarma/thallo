@@ -1,6 +1,8 @@
 use crate::engine::{
     design_scale::DesignScale,
-    minigames::{ActiveMinigame, MinigameTextures},
+    minigames::{
+        ActiveMinigame, MinigameOutcome, MinigameTextures, MinigameType, find_current_checkpoint,
+    },
 };
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -11,7 +13,11 @@ pub struct BruteForceState {
     pub current_angle: f32,
     pub speed: f32,        // Radians per second
     pub missed_timer: f32, // Time remaining for the "red" flash
+    pub miss_count: u8,
+    pub failed: bool,
 }
+
+const MAX_MISSES: u8 = 10;
 
 pub(super) fn render_bruteforce(
     ctx: &egui::Context,
@@ -105,7 +111,9 @@ pub(super) fn update_bruteforce_logic(
     mouse: Res<ButtonInput<MouseButton>>,
     time: Res<Time>,
     mut active: ResMut<ActiveMinigame>,
+    mut cmd: Commands,
 ) {
+    let mut clear_active = false;
     let Some(minigame) = &mut active.0 else {
         return;
     };
@@ -146,6 +154,7 @@ pub(super) fn update_bruteforce_logic(
             state.filled_slots[closest_idx] = !was_filled;
             if was_filled {
                 state.missed_timer = 0.5;
+                state.miss_count += 1;
             }
 
             // REVERSE & SPEED UP
@@ -157,12 +166,32 @@ pub(super) fn update_bruteforce_logic(
             // We only win if all slots are filled (meaning we didn't just deselect one)
             if state.filled_slots.iter().all(|&f| f) {
                 info!("Hacked successfully!");
-                active.0 = None;
+                cmd.trigger(MinigameOutcome {
+                    checkpoint: minigame.checkpoint,
+                    game_type: MinigameType::BruteForce,
+                    success: true,
+                });
+                clear_active = true;
             }
         } else {
-            // Optional: Penalty for missing completely (click outside margin)
+            // Penalty for missing completely (click outside margin)
             state.missed_timer = 0.2;
+            state.miss_count += 1;
             state.speed = -state.speed;
         }
+    } // Check fail condition
+    if !clear_active && state.miss_count > MAX_MISSES {
+        state.failed = true;
+        let checkpoint = find_current_checkpoint(minigame);
+        cmd.trigger(MinigameOutcome {
+            checkpoint,
+            game_type: MinigameType::BruteForce,
+            success: false,
+        });
+        // Flag the minigame to be cleared
+        clear_active = true;
+    }
+    if clear_active {
+        active.0 = None;
     }
 }

@@ -6,14 +6,8 @@ use crate::engine::scripted_events::{
 pub(super) fn build_act1_dialogues() -> Dialogues {
     Dialogues {
         lines: vec![
-            DialogueLine::new(false, "Hey, you’re in?").on_complete(
-                ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(
-                    NewFileReceiving::BruteForce,
-                )),
-            ), // false is anon
-            DialogueLine::new(true, "i think so. what are we looking for exactly?").on_complete(
-                ScriptedEventTrigger::BeginReboot(RebootSequence::NetworkConnect),
-            ), // true is player
+            DialogueLine::new(false, "Hey, you’re in?"), // false is anon
+            DialogueLine::new(true, "i think so. what are we looking for exactly?"), // true is player
             DialogueLine::new(
                 false,
                 "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.",

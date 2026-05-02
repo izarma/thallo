@@ -9,7 +9,7 @@ use crate::{
 pub const ICON_DESIGN_SIZE: f32 = 128.0;
 /// Extra horizontal padding around each icon cell at design resolution.
 const ICON_CELL_PAD: f32 = 16.0;
-const ICON_LABEL_MAX_CHARS: usize = 10;
+const ICON_LABEL_MAX_CHARS: usize = 12;
 
 /// Padding (in design-space px) inserted around the entire grid as an inner margin.
 const GRID_MARGIN_DESIGN: f32 = 12.0;
@@ -128,8 +128,15 @@ pub fn show_icon_grid(
                                     }
                                 }
 
-                                let label = truncate_label(&item.label, ICON_LABEL_MAX_CHARS);
-                                ui.label(egui::RichText::new(label).size(font_size));
+                                if is_selected {
+                                    // Show the full name, word-wrapped within the cell.
+
+                                    ui.label(egui::RichText::new(&item.label).size(font_size));
+                                } else {
+                                    let label = truncate_label(&item.label, ICON_LABEL_MAX_CHARS);
+
+                                    ui.label(egui::RichText::new(label).size(font_size));
+                                }
                             });
 
                             if (col_idx + 1) % cols == 0 {

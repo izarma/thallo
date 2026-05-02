@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-const EXPLORER_COLS: usize = 4;
+const EXPLORER_COLS: usize = 6;
 
 pub fn show_file_explorer(
     ui: &mut egui::Ui,

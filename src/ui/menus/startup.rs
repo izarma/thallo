@@ -75,6 +75,8 @@ fn act2_title(
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
     primitives::centered_panel(ctx, "act2_title", |ui| {
+        primitives::header(ui, "ACT II");
+        primitives::label(ui, "5 minutes before the catastrophe on Sunday");
         if primitives::button(ui, "Power On").clicked() {
             next_screen.set(Screen::Loading);
             next_menu.set(Menu::None);

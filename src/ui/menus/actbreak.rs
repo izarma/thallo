@@ -32,10 +32,7 @@ fn connecting_sunday(mut contexts: EguiContexts) -> Result {
 
 fn act1_break_ui(mut contexts: EguiContexts) -> Result {
     let ctx = contexts.ctx_mut()?;
-    primitives::centered_panel(ctx, "connecting_sunday", |ui| {
-        primitives::header(ui, "ACT II");
-        primitives::label(ui, "5 minutes before the catastrophe on Sunday");
-    });
+    primitives::centered_panel(ctx, "act2", |ui| {});
     Ok(())
 }
 

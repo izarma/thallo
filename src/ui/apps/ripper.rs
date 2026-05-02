@@ -19,9 +19,10 @@ pub struct NetRipperOutput {
 
 /// Relay labels — flavour text for each minigame checkpoint.
 const RELAYS: &[(&str, f32)] = &[
-    ("RELAY_ALPHA", 0.30),
-    ("RELAY_ZETA", 0.65),
-    ("UPLINK_FINAL", 0.90),
+    ("RELAY_ALPHA", 0.20),
+    ("RELAY_ZETA", 0.40),
+    ("RELAY_OMEGA", 0.60),
+    ("UPLINK_FINAL", 0.80),
 ];
 
 pub(super) fn show_netripper_transmit(

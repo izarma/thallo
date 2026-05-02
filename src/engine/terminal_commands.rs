@@ -275,7 +275,7 @@ fn cmd_netripper(
             name: "SOS Transmission".to_string(),
             app_type: Applications::Ripper {
                 path: None,
-                max_tries: None,
+                max_tries: Some(3),
                 elapsed: 0.0,
                 minigames_triggered: 0,
                 on_complete: Some(ScriptedEventTrigger::TransmitSOS),

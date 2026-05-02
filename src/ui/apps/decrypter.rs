@@ -10,7 +10,7 @@ const DECRYPT_DURATION: f32 = 10.0;
 
 /// Progress fractions (0.0–1.0) at which a mini-game interrupt is triggered.
 /// Bit N of `minigames_triggered` is set once checkpoint N has fired.
-const MINIGAME_CHECKPOINTS: &[f32] = &[0.30, 0.65, 0.90];
+const MINIGAME_CHECKPOINTS: &[f32] = &[0.25, 0.50, 0.75];
 
 pub struct DecrypterOutput {
     pub complete: bool,

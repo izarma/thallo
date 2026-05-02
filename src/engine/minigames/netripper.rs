@@ -1,12 +1,18 @@
+use bevy::prelude::*;
 use bevy_egui::egui;
 use rand::Rng;
 
-use crate::engine::{design_scale::DesignScale, minigames::MinigameTextures};
+use crate::engine::{
+    design_scale::DesignScale,
+    minigames::{ActiveMinigame, MinigameOutcome, MinigameTextures, MinigameType},
+};
 
 #[derive(Clone)]
 pub struct NetRipperState {
     pub nodes: [[NetNode; 3]; 3],
     pub solved: bool,
+    pub time_remaining: f32,
+    pub failed: bool,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -60,6 +66,8 @@ impl NetRipperState {
         Self {
             nodes,
             solved: false,
+            time_remaining: 20.0,
+            failed: false,
         }
     }
 
@@ -148,6 +156,25 @@ pub(super) fn render_netripper(
                 egui::Color32::WHITE,
             );
 
+            // Timer visual (top center)
+            let timer_rect = egui::Rect::from_center_size(
+                center + egui::vec2(0.0, -bg_size.y * 0.42),
+                egui::vec2(120.0 * scale.uniform(), 30.0 * scale.uniform()),
+            );
+            let remaining_secs = state.time_remaining;
+            let color = if remaining_secs > 5.0 {
+                egui::Color32::WHITE
+            } else {
+                egui::Color32::RED
+            };
+            painter.text(
+                timer_rect.center(),
+                egui::Align2::CENTER_CENTER,
+                format!("{:.1}", remaining_secs),
+                egui::FontId::proportional(20.0 * scale.uniform()),
+                color,
+            );
+
             let mut interaction = None;
 
             // 4. Draw the Nodes & Lines
@@ -184,7 +211,7 @@ pub(super) fn render_netripper(
                     painter.circle_stroke(
                         pos,
                         node_radius,
-                        egui::Stroke::new(1.0, egui::Color32::from_gray(80)),
+                        egui::Stroke::new(1.0_f32, egui::Color32::from_gray(80)),
                     );
 
                     // Calculate Stroke based on uniform scale so lines don't get fat/thin on window stretch
@@ -225,4 +252,58 @@ pub(super) fn render_netripper(
                 state.solved = state.check_win();
             }
         });
+}
+
+pub(super) fn update_netripper_logic(
+    time: Res<Time>,
+    mut active: ResMut<ActiveMinigame>,
+    mut cmd: Commands,
+) {
+    let mut clear_active = false;
+    let Some(minigame) = &mut active.0 else {
+        return;
+    };
+    let Some(state) = &mut minigame.net_ripper else {
+        return;
+    };
+
+    if state.failed || state.solved {
+        // Already resolved, will be cleared elsewhere (or clear here)
+        if state.solved {
+            cmd.trigger(MinigameOutcome {
+                checkpoint: minigame.checkpoint,
+                game_type: MinigameType::NetRipper,
+                success: true,
+            });
+            active.0 = None;
+        }
+        return;
+    }
+
+    // Countdown timer
+    if state.time_remaining > 0.0 {
+        state.time_remaining -= time.delta_secs();
+        if state.time_remaining <= 0.0 {
+            state.time_remaining = 0.0;
+            state.failed = true;
+            // Fire outcome event
+            cmd.trigger(MinigameOutcome {
+                checkpoint: minigame.checkpoint,
+                game_type: MinigameType::NetRipper,
+                success: false,
+            });
+            clear_active = true;
+        }
+    }
+    if !clear_active && state.solved {
+        cmd.trigger(MinigameOutcome {
+            checkpoint: minigame.checkpoint,
+            game_type: MinigameType::NetRipper,
+            success: true,
+        });
+        clear_active = true;
+    }
+    if clear_active {
+        active.0 = None;
+    }
 }
