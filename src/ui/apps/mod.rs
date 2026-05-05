@@ -3,23 +3,26 @@ use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 
 use crate::{
     engine::{
-        UiPassSystems,
+        Pause, UiPassSystems,
         design_scale::DesignScale,
         file_system::FsHierarchy,
+        minigames::{MinigameTrigger, MinigameType},
         screens::{
             Screen,
             desktop::{DesktopTextures, IconTextures},
         },
-        scripted_events::{Dialogues, ScriptedEvent},
+        scripted_events::{Dialogues, ScriptedEventTrigger, UnlockState},
         system_apps::{Applications, OpenAppEvent},
-        terminal_commands::execute_command,
+        terminal_commands::{CommandOutput, execute_command},
         window_manager::{OpenWindows, ToggleMinimizeEvent, WindowAction},
     },
     ui::{
         apps::{
             chatbox::{commit_player_line, show_chatbox},
+            decrypter::show_encrypted,
             file_explorer::show_file_explorer,
             image_viewer::show_image_viewer,
+            ripper::show_netripper_transmit,
             terminal::show_terminal,
             text_viewer::show_text_viewer,
             unlocker::show_unlocker,
@@ -29,8 +32,10 @@ use crate::{
 };
 
 mod chatbox;
+mod decrypter;
 mod file_explorer;
 mod image_viewer;
+mod ripper;
 pub mod settings_menu;
 mod terminal;
 mod text_viewer;
@@ -65,6 +70,8 @@ fn show_open_windows(
     tex: Res<DesktopTextures>,
     scale: Res<DesignScale>,
     time: Res<Time>,
+    paused: Res<State<Pause>>,
+    unlock_state: Res<UnlockState>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
     let top_layer_window_id = ctx.memory(|mem| {
@@ -156,10 +163,18 @@ fn show_open_windows(
                                     show_terminal(ui, cwd, history, input, &scale, is_focused)
                                 {
                                     history.push(format!("> {}", cmd_str));
-                                    if let Some(event) =
-                                        execute_command(&cmd_str, cwd, history, &vfs)
-                                    {
-                                        cmd.trigger(event); // cmd here is the Bevy Commands from the system params
+                                    let cmd_output = execute_command(
+                                        &cmd_str,
+                                        cwd,
+                                        history,
+                                        &mut *vfs,
+                                        &unlock_state,
+                                    );
+                                    match cmd_output {
+                                        CommandOutput::OpenApp(event) => {
+                                            cmd.trigger(event);
+                                        }
+                                        CommandOutput::None => {}
                                     }
                                     input.clear();
                                 }
@@ -196,24 +211,53 @@ fn show_open_windows(
                             }
                             Applications::Decrypter {
                                 path,
-                                max_tries,
+                                max_tries: _, // check later
                                 elapsed,
                                 minigames_triggered,
                             } => {
-                                //     let output =
-                                //         show_encrypted(ui, elapsed, minigames_triggered, dt, paused);
+                                let output =
+                                    show_encrypted(ui, elapsed, minigames_triggered, dt, paused.0);
+                                if let Some(idx) = output.triggered_checkpoint {
+                                    cmd.trigger(MinigameTrigger {
+                                        checkpoint: idx,
+                                        game_type: MinigameType::BruteForce,
+                                    });
+                                }
 
-                                //     if let Some(idx) = output.triggered_checkpoint {
-                                //         active_mg.checkpoint = Some(idx);
-                                //         cmd.trigger(MinigameTrigger { checkpoint: idx });
-                                //     }
-
-                                //     if output.complete {
-                                //         WindowAction::DecryptComplete { path: path.clone() }
-                                //     } else {
-                                //         WindowAction::None
-                                //     }
-                                WindowAction::None
+                                if output.complete {
+                                    WindowAction::DecryptComplete { path: path.clone() }
+                                } else {
+                                    WindowAction::None
+                                }
+                            }
+                            Applications::Ripper {
+                                path,
+                                elapsed,
+                                minigames_triggered,
+                                on_complete,
+                                ..
+                            } => {
+                                let target =
+                                    path.as_ref().map(|p| p.file_name()).unwrap_or("UNKNOWN");
+                                let output = show_netripper_transmit(
+                                    ui,
+                                    target,
+                                    elapsed,
+                                    minigames_triggered,
+                                    dt,
+                                    paused.0,
+                                );
+                                if let Some(idx) = output.triggered_checkpoint {
+                                    cmd.trigger(MinigameTrigger {
+                                        checkpoint: idx,
+                                        game_type: MinigameType::NetRipper,
+                                    });
+                                }
+                                if output.complete {
+                                    WindowAction::RipperComplete(on_complete.clone())
+                                } else {
+                                    WindowAction::None
+                                }
                             }
                         };
                         actions.push((entry.id, action));
@@ -260,9 +304,6 @@ fn show_open_windows(
                     };
 
                 if vfs.unlock_with_password(&path, &password).is_ok() {
-                    if path.file_name() == "omega.png" {
-                        cmd.trigger(ScriptedEvent::Unlock1);
-                    }
                     if let Some(node) = vfs.get_node(&path) {
                         let fresh_event = OpenAppEvent::from_fsnode(node, path);
                         entry.event.app_type = fresh_event.app_type;
@@ -284,6 +325,18 @@ fn show_open_windows(
                     debug!("Failed to crack encrypted node at {}", path);
                 }
             }
+            WindowAction::RipperComplete(event) => match event {
+                Some(ScriptedEventTrigger::RipperFailed) => {
+                    cmd.trigger(ScriptedEventTrigger::RipperFailed);
+                    entry.is_open = false;
+                }
+                other => {
+                    if let Some(ev) = other {
+                        cmd.trigger(ev);
+                    }
+                    entry.is_open = false;
+                }
+            },
             WindowAction::Select(new_selection) => {
                 if let Applications::FileExplorer { selected_item, .. } = &mut entry.event.app_type
                 {

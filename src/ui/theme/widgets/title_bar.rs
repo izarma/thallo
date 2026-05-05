@@ -12,7 +12,7 @@ pub enum TitleBarAction {
 
 pub fn title_bar(ui: &mut egui::Ui, title: &str, scale: &DesignScale) -> TitleBarAction {
     let mut action = TitleBarAction::None;
-    let bar_height = scale.py(42.0);
+    let bar_height = scale.py(40.0);
 
     let bar_rect = {
         let r = ui.max_rect();

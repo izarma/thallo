@@ -1,9 +1,6 @@
 use bevy_egui::egui;
 
-use crate::ui::theme::palette::{
-    BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, BUTTON_TEXT_COLOR, HEADER_COLOR, LABEL_COLOR,
-    apply_button_theme,
-};
+use crate::ui::theme::palette::{BUTTON_TEXT_COLOR, HEADER_COLOR, LABEL_COLOR, apply_button_theme};
 
 /// Wraps `body` in a vertically-and-horizontally centred [`egui::CentralPanel`]
 ///
@@ -76,4 +73,46 @@ pub fn truncate_label(s: &str, max_chars: usize) -> String {
     } else {
         s.to_string()
     }
+}
+
+use crate::ui::theme::palette::BUTTON_HOVERED_BG;
+use bevy_egui::egui::Color32;
+
+pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32, height: f32) {
+    let progress = progress.clamp(0.0, 1.0);
+    let done = progress >= 1.0;
+
+    let (outer, _) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::hover());
+    let p = ui.painter();
+
+    // 1-px border — colour signals completion
+    let border = if done {
+        Color32::from_rgb(80, 200, 120)
+    } else {
+        Color32::from_rgb(100, 100, 120)
+    };
+    p.rect_filled(outer, egui::CornerRadius::same(3), border);
+
+    // Dark track
+    let inner = outer.shrink(1.0);
+    p.rect_filled(
+        inner,
+        egui::CornerRadius::same(2),
+        Color32::from_rgb(14, 14, 22),
+    );
+
+    // Fill
+    if progress > 0.0 {
+        let fill = if done {
+            Color32::from_rgb(60, 200, 100)
+        } else {
+            BUTTON_HOVERED_BG
+        };
+        let fill_rect = egui::Rect::from_min_size(
+            inner.min,
+            egui::vec2(inner.width() * progress, inner.height()),
+        );
+        p.rect_filled(fill_rect, egui::CornerRadius::same(2), fill);
+    }
+    ui.label(format!("{:.0}%", progress * 100.0));
 }

@@ -3,7 +3,7 @@ use bevy_egui::egui::{self};
 use crate::{
     engine::{
         design_scale::DesignScale,
-        file_system::{FileType, FsHierarchy, FsPath},
+        file_system::{FileType, FsHierarchy, FsPath, LockType},
         screens::desktop::IconTextures,
         system_apps::OpenAppEvent,
         window_manager::WindowAction,
@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-const EXPLORER_COLS: usize = 4;
+const EXPLORER_COLS: usize = 6;
 
 pub fn show_file_explorer(
     ui: &mut egui::Ui,
@@ -60,6 +60,7 @@ pub fn show_file_explorer(
             id: path.join(&c.name).to_string(),
             label: c.name.clone(),
             icon: icon_for_filetype(&c.file_type, &icons, c.meta.locked.is_some()),
+            is_encrypted: c.meta.locked == Some(LockType::Encrypted),
         })
         .collect();
 

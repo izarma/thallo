@@ -9,7 +9,7 @@ use crate::{
 pub const ICON_DESIGN_SIZE: f32 = 128.0;
 /// Extra horizontal padding around each icon cell at design resolution.
 const ICON_CELL_PAD: f32 = 16.0;
-const ICON_LABEL_MAX_CHARS: usize = 10;
+const ICON_LABEL_MAX_CHARS: usize = 12;
 
 /// Padding (in design-space px) inserted around the entire grid as an inner margin.
 const GRID_MARGIN_DESIGN: f32 = 12.0;
@@ -31,6 +31,7 @@ pub struct IconGridItem {
     pub id: String,
     pub label: String,
     pub icon: IconRef,
+    pub is_encrypted: bool,
 }
 
 /// What the caller should do after [`show_icon_grid`] returns.
@@ -120,18 +121,112 @@ pub fn show_icon_grid(
 
                                 let resp = ui.add(btn);
 
-                                if resp.double_clicked() {
-                                    action = IconGridAction::Opened(item.id.clone());
-                                } else if resp.clicked() {
-                                    action = IconGridAction::Selected(if is_selected {
-                                        String::new() // empty = deselect
-                                    } else {
-                                        item.id.clone()
-                                    });
+                                if item.is_encrypted {
+                                    let painter = ui.painter();
+                                    let r = resp.rect;
+
+                                    let time = ui.input(|i| i.time) as f32;
+
+                                    let hash = |y: f32, t: f32| -> f32 {
+                                        ((y * 12.9898 + t * 78.233).sin() * 43758.5453)
+                                            .fract()
+                                            .abs()
+                                    };
+
+                                    // 3. Port the horizontal block-based distortion logic
+                                    let block_size = 15.0;
+                                    let slice_height = r.height() / block_size;
+                                    let uv_slice_height = item.icon.uv.height() / block_size;
+                                    let glitch_strength = 12.0 * ratio; // Scale effect by resolution
+
+                                    // Draw the icon in multiple horizontal slices
+                                    for i in 0..(block_size as usize) {
+                                        let i_f = i as f32;
+                                        let block_uv = i_f / block_size;
+
+                                        // Random trigger for glitching a specific block at a specific time
+                                        let rand = hash(block_uv, time.floor());
+                                        let trigger = if rand > 0.85 { 1.0 } else { 0.0 };
+
+                                        let mut shift = 0.0;
+                                        if trigger > 0.5 {
+                                            shift = (hash(block_uv, time) * 2.0 - 1.0)
+                                                * glitch_strength;
+                                        }
+
+                                        // Calculate geometry and UV rects for this specific slice
+                                        let slice_rect = egui::Rect::from_min_max(
+                                            egui::pos2(
+                                                r.min.x + shift,
+                                                r.min.y + i_f * slice_height,
+                                            ),
+                                            egui::pos2(
+                                                r.max.x + shift,
+                                                r.min.y + (i_f + 1.0) * slice_height,
+                                            ),
+                                        );
+
+                                        let uv_rect = egui::Rect::from_min_max(
+                                            egui::pos2(
+                                                item.icon.uv.min.x,
+                                                item.icon.uv.min.y + i_f * uv_slice_height,
+                                            ),
+                                            egui::pos2(
+                                                item.icon.uv.max.x,
+                                                item.icon.uv.min.y + (i_f + 1.0) * uv_slice_height,
+                                            ),
+                                        );
+
+                                        // 4. Color channel drift with noise
+                                        let drift =
+                                            (hash(block_uv * 50.0, time) - 0.5) * glitch_strength;
+
+                                        // Draw Red drift slice
+                                        painter.image(
+                                            item.icon.texture_id,
+                                            slice_rect.translate(egui::vec2(drift, 0.0)),
+                                            uv_rect,
+                                            egui::Color32::from_rgba_unmultiplied(255, 60, 60, 150),
+                                        );
+                                        // Draw Blue drift slice
+                                        painter.image(
+                                            item.icon.texture_id,
+                                            slice_rect.translate(egui::vec2(-drift, 0.0)),
+                                            uv_rect,
+                                            egui::Color32::from_rgba_unmultiplied(60, 60, 255, 150),
+                                        );
+                                        // Draw the main texture slice on top
+                                        painter.image(
+                                            item.icon.texture_id,
+                                            slice_rect,
+                                            uv_rect,
+                                            egui::Color32::from_rgba_unmultiplied(
+                                                255, 255, 255, 200,
+                                            ),
+                                        );
+                                    }
+
+                                    // Request a repaint to keep the glitch animation running smoothly
+                                    ui.ctx().request_repaint();
                                 }
 
-                                let label = truncate_label(&item.label, ICON_LABEL_MAX_CHARS);
-                                ui.label(egui::RichText::new(label).size(font_size));
+                                if resp.clicked() {
+                                    if is_selected {
+                                        action = IconGridAction::Opened(item.id.clone());
+                                    } else {
+                                        action = IconGridAction::Selected(item.id.clone());
+                                    }
+                                }
+
+                                if is_selected {
+                                    // Show the full name, word-wrapped within the cell.
+
+                                    ui.label(egui::RichText::new(&item.label).size(font_size));
+                                } else {
+                                    let label = truncate_label(&item.label, ICON_LABEL_MAX_CHARS);
+
+                                    ui.label(egui::RichText::new(label).size(font_size));
+                                }
                             });
 
                             if (col_idx + 1) % cols == 0 {

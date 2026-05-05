@@ -65,12 +65,6 @@ impl DesignScale {
     pub fn py(&self, design_h: f32) -> f32 {
         design_h * self.y
     }
-
-    // /// Scale a single value along the X axis.
-    // #[inline]
-    // pub fn pxa(&self, design_w: f32) -> f32 {
-    //     design_w * self.x
-    // }
 }
 
 fn update_design_scale(

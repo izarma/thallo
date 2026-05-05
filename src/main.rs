@@ -1,6 +1,12 @@
-use bevy::{log::LogPlugin, prelude::*};
-use bevy_egui::EguiPlugin;
+use bevy::{
+    log::LogPlugin,
+    prelude::*,
+    window::{CursorIcon, CustomCursor, CustomCursorImage, WindowMode},
+};
+use bevy_egui::{EguiGlobalSettings, EguiPlugin};
 use tracing::Level;
+
+use crate::engine::post_processing::PostProcessSettings;
 
 mod engine;
 mod game;
@@ -20,7 +26,7 @@ fn main() {
     ))
     // this turns into the default background color
     .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
-    .add_systems(Startup, setup_camera)
+    .add_systems(Startup, (setup_camera, spawn_cursor))
     .run();
 }
 
@@ -30,6 +36,7 @@ fn create_window_plugin() -> WindowPlugin {
         primary_window: Some(Window {
             title: "Project Thallo".to_string(),
             resizable: false,
+            mode: WindowMode::BorderlessFullscreen(MonitorSelection::Current),
             ..default()
         }),
         ..default()
@@ -45,5 +52,28 @@ fn setup_camera(mut commands: Commands) {
         },
         ..OrthographicProjection::default_2d()
     });
-    commands.spawn((Name::new("Camera"), main_camera, projection));
+    commands.spawn((
+        Name::new("Camera"),
+        main_camera,
+        projection,
+        PostProcessSettings {
+            intensity: 0.02,
+            ..default()
+        },
+    ));
+}
+
+fn spawn_cursor(
+    mut cmd: Commands,
+    window: Single<Entity, With<Window>>,
+    assets: Res<AssetServer>,
+    mut egui_global: ResMut<EguiGlobalSettings>,
+) {
+    //disables egui messing with cursor
+    egui_global.enable_cursor_icon_updates = false;
+    cmd.entity(*window)
+        .insert((CursorIcon::Custom(CustomCursor::Image(CustomCursorImage {
+            handle: assets.load("ui/cursors/cursor.png"),
+            ..default()
+        })),));
 }

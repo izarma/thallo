@@ -72,12 +72,13 @@ pub struct NodeMeta {
 }
 
 /// For Locked Folders / Files
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LockType {
     Password(String), // hashed or plaintext for a game is fine
     Encrypted,        // unlocked by game event / specific string
 }
 
+#[allow(dead_code)]
 impl FsNode {
     /// Constructors
     pub fn folder(name: &str) -> Self {

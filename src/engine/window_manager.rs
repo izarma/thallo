@@ -3,7 +3,8 @@ use bevy_egui::egui;
 
 use crate::engine::{
     file_system::FsPath,
-    system_apps::{Applications, OpenAppEvent},
+    scripted_events::{ScriptedEventTrigger, UnlockState},
+    system_apps::{Applications, ChatBoxState, OpenAlertEvent, OpenAppEvent, SystemAlerts},
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -29,6 +30,24 @@ impl OpenWindows {
                 .find(|w| matches!(w.event.app_type, Applications::Chatbox { .. }))
             {
                 existing.is_minimized = false; // bring it back up
+
+                // If the chatbox has finished its previous exchange, resume it
+                // with the state carried by the incoming event (AnonTyping).
+                if let (
+                    Applications::Chatbox {
+                        state: existing_state,
+                        ..
+                    },
+                    Applications::Chatbox {
+                        state: new_state, ..
+                    },
+                ) = (&mut existing.event.app_type, &event.app_type)
+                {
+                    if *existing_state == ChatBoxState::Done {
+                        *existing_state = new_state.clone();
+                    }
+                }
+
                 return;
             }
         }
@@ -56,7 +75,20 @@ impl WindowEntry {
     }
 }
 
-fn handle_open_node_events(node: On<OpenAppEvent>, mut open_windows: ResMut<OpenWindows>) {
+fn handle_open_node_events(
+    node: On<OpenAppEvent>,
+    mut open_windows: ResMut<OpenWindows>,
+    state: Res<UnlockState>,
+    mut cmd: Commands,
+) {
+    if matches!(node.app_type, Applications::Decrypter { .. }) && !state.bruteforce {
+        cmd.trigger(OpenAlertEvent {
+            name: node.name.clone(),
+            alert: SystemAlerts::EncryptedError,
+        });
+        return;
+    }
+
     open_windows.open(node.clone());
 }
 
@@ -93,4 +125,5 @@ pub enum WindowAction {
     DecryptComplete {
         path: FsPath,
     },
+    RipperComplete(Option<ScriptedEventTrigger>),
 }

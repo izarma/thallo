@@ -12,10 +12,9 @@ const COLOR_INPUT: Color32 = Color32::from_rgb(210, 210, 210);
 const COLOR_HEADER: Color32 = Color32::from_rgb(100, 110, 100);
 
 const BOOT_LINES: &[&str] = &[
-    "ST-OS v4.2.1 [CLASSIFIED BUILD]",
+    "ST-OS v4.2.0 [CLASSIFIED BUILD]",
     "Research Division Terminal Access",
     "WARNING: Unauthorized access is a federal offense.",
-    "Session logging is active.",
     "",
     "Authenticating...",
     "Access granted. Welcome, OPERATOR.",
@@ -39,7 +38,7 @@ pub(crate) fn show_terminal(
     let top_rect = egui::Rect::from_min_max(total_rect.min, egui::pos2(total_rect.max.x, split_y));
     let bot_rect = egui::Rect::from_min_max(egui::pos2(total_rect.min.x, split_y), total_rect.max);
 
-    // ── Top zone: scrollable output ─────────────────────────────────────────
+    // Top zone: scrollable output
     let mut top_ui = ui.new_child(egui::UiBuilder::new().max_rect(top_rect));
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(
@@ -79,7 +78,7 @@ pub(crate) fn show_terminal(
                 });
         });
 
-    // ── Bottom zone: input ──────────────────────────────────────────────────
+    // Bottom zone: input
     let mut bot_ui = ui.new_child(egui::UiBuilder::new().max_rect(bot_rect));
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(
@@ -97,18 +96,10 @@ pub(crate) fn show_terminal(
             );
             ui.add_space(4.0);
 
-            // CWD breadcrumb
-            ui.label(
-                RichText::new(format!("  DIR: {}", cwd.as_str()))
-                    .font(font_sm.clone())
-                    .color(COLOR_DIM),
-            );
-            ui.add_space(2.0);
-
             // Prompt + input field
             ui.horizontal(|ui| {
                 ui.label(
-                    RichText::new(format!("OPER@STOS:{}/>", cwd.as_str())) // need to use cwd here
+                    RichText::new(format!("OPER@ST-OS:{}/>", cwd.as_str()))
                         .font(font.clone())
                         .color(COLOR_PROMPT),
                 );

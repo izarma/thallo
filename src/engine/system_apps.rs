@@ -3,7 +3,7 @@ use bevy_egui::egui::{TextureId, Vec2};
 
 use crate::engine::{
     file_system::{FileType, FsNode, FsPath, LockType},
-    scripted_events::DialogueLine,
+    scripted_events::{DialogueLine, NewFileReceiving, ScriptedEventTrigger},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,6 +31,13 @@ pub enum Applications {
         /// Bitmask — bit N is set once minigame checkpoint N has been triggered.
         minigames_triggered: u8,
     },
+    Ripper {
+        path: Option<FsPath>,
+        max_tries: Option<u8>,
+        elapsed: f32,
+        minigames_triggered: u8,
+        on_complete: Option<ScriptedEventTrigger>,
+    },
     Terminal {
         // Current Working Directory
         cwd: FsPath,
@@ -52,6 +59,7 @@ impl Applications {
             Applications::ImageViewer { .. } => "Image Viewer",
             Applications::Unlocker { .. } => "Locked",
             Applications::Decrypter { .. } => "Encrypted",
+            Applications::Ripper { .. } => "NetRipper",
             Applications::Terminal { .. } => "Terminal",
             Applications::Chatbox { .. } => "Chatbox",
         }
@@ -104,4 +112,24 @@ pub enum ChatBoxState {
     AnonTyping { elapsed: f32 },
     PlayerReady { chars_revealed: usize },
     Done,
+}
+
+#[derive(Debug, Clone)]
+pub enum SystemAlerts {
+    FileTransfer(NewFileReceiving),
+    EncryptedError,
+}
+
+#[derive(Event)]
+pub struct OpenAlertEvent {
+    pub name: String,
+    pub alert: SystemAlerts,
+}
+
+impl OpenAlertEvent {
+    //do we have a from fs node as well?
+    pub fn from_scripted_event(name: String, alert: SystemAlerts) -> Self {
+        println!("{}", name);
+        Self { name, alert }
+    }
 }
