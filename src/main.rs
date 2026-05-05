@@ -6,6 +6,8 @@ use bevy::{
 use bevy_egui::{EguiGlobalSettings, EguiPlugin};
 use tracing::Level;
 
+use crate::engine::post_processing::PostProcessSettings;
+
 mod engine;
 mod game;
 mod ui;
@@ -50,7 +52,15 @@ fn setup_camera(mut commands: Commands) {
         },
         ..OrthographicProjection::default_2d()
     });
-    commands.spawn((Name::new("Camera"), main_camera, projection));
+    commands.spawn((
+        Name::new("Camera"),
+        main_camera,
+        projection,
+        PostProcessSettings {
+            intensity: 0.02,
+            ..default()
+        },
+    ));
 }
 
 fn spawn_cursor(

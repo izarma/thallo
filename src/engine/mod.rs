@@ -11,6 +11,7 @@ pub mod audio;
 pub mod design_scale;
 pub mod file_system;
 pub mod minigames;
+pub mod post_processing;
 pub mod screens;
 pub mod scripted_events;
 pub mod system_apps;
@@ -37,6 +38,7 @@ pub(super) fn plugin(app: &mut App) {
         window_manager::plugin,
         scripted_events::plugin,
         minigames::plugin,
+        post_processing::plugin,
     ));
     app.add_systems(Update, pause_game.run_if(in_state(Screen::Desktop)));
 }

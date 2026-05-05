@@ -5,7 +5,7 @@ use crate::{
     engine::{
         UiPassSystems,
         design_scale::DesignScale,
-        file_system::{DESKTOP_PATH, FileType, FsHierarchy, FsPath, HOME_PATH},
+        file_system::{DESKTOP_PATH, FileType, FsHierarchy, FsPath, HOME_PATH, LockType},
         screens::{
             Screen,
             desktop::{DesktopAssets, DesktopTextures, IconTextures},
@@ -64,6 +64,7 @@ fn show_desktop(
             id: item.event.name.clone(),
             label: item.event.name.clone(),
             icon: icon_for_filetype(&item.file_type, &icons, item.is_locked),
+            is_encrypted: item.is_encrypted,
         })
         .collect();
 
@@ -114,6 +115,7 @@ fn build_desktop_items(vfs: &FsHierarchy) -> Vec<DesktopItem> {
                         event: OpenAppEvent::from_fsnode(c, desktop_root.join(&c.name)),
                         file_type: c.file_type.clone(),
                         is_locked: c.meta.locked.is_some(),
+                        is_encrypted: c.meta.locked == Some(LockType::Encrypted),
                     })
                     .collect(),
             ),
@@ -126,6 +128,7 @@ struct DesktopItem {
     event: OpenAppEvent,
     file_type: FileType,
     is_locked: bool,
+    is_encrypted: bool,
 }
 
 #[derive(Resource, Default)]

@@ -1,5 +1,6 @@
 use bevy_egui::egui::{self, Color32};
 
+// Core
 pub const HEADER_COLOR: Color32 = Color32::from_rgb(240, 240, 240);
 pub const LABEL_COLOR: Color32 = Color32::from_rgb(200, 200, 200);
 pub const BUTTON_TEXT_COLOR: Color32 = Color32::from_rgb(240, 240, 240);
