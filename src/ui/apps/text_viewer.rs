@@ -1,11 +1,22 @@
-use bevy_egui::egui::{self, ScrollArea};
+use bevy_egui::egui::{self, Frame, Margin, ScrollArea};
 
-pub(crate) fn show_text_viewer(ui: &mut egui::Ui, content: &str) {
+use crate::{engine::design_scale::DesignScale, ui::theme::widgets::primitives};
+
+pub(crate) fn show_text_viewer(ui: &mut egui::Ui, content: &str, scale: &DesignScale) {
     ScrollArea::vertical()
-        .max_height(f32::INFINITY)
+        .auto_shrink([false, false])
         .show(ui, |ui| {
-            ui.add_space(30.0);
-            ui.label(content);
-            ui.separator();
+            // Apply our exact padding using an egui::Frame
+            Frame::default()
+                .inner_margin(Margin {
+                    left: (20.0 * scale.x) as i8,
+                    right: (16.0 * scale.x) as i8,
+                    top: (20.0 * scale.y) as i8,
+                    bottom: (20.0 * scale.y) as i8,
+                })
+                .show(ui, |ui| {
+                    ui.style_mut().interaction.selectable_labels = true;
+                    primitives::label(ui, content)
+                });
         });
 }

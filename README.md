@@ -5,6 +5,7 @@
 # PROJECT-THALLO
 
 <em></em>
+
 <!-- BADGES -->
 <!-- local repository, no metadata badges. -->
 
@@ -19,15 +20,17 @@
 
 ## Overview
 
-Desktop OS Sim - bevy + egui
-
----
+Desktop OS Sim ARG - bevy + egui
+retro future horror aestheic
+Made for [nihil](https://mike-starrow.itch.io/nihil) universe
 
 ## Features
 
 - Virtual File System
-- an in-game terminal
-- Desktop
+- Chat Dialogue with even triggers
+- Interactive Desktop & Windows
+- In-game toy terminal
+- CRT/chromatic abberation shaders
 
 ---
 

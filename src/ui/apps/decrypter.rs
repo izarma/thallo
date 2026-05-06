@@ -6,7 +6,7 @@ use crate::ui::theme::{
 };
 
 /// Total time (seconds) the decryption progress bar takes to fill.
-const DECRYPT_DURATION: f32 = 10.0;
+const DECRYPT_DURATION: f32 = 12.0;
 
 /// Progress fractions (0.0–1.0) at which a mini-game interrupt is triggered.
 /// Bit N of `minigames_triggered` is set once checkpoint N has fired.

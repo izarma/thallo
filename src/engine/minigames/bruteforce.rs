@@ -27,7 +27,7 @@ pub(super) fn render_bruteforce(
     state: &BruteForceState,
     scale: &DesignScale,
 ) {
-    let display_scale = 2.0;
+    let display_scale = 1.5;
     let bg_size = scale.px(512.0, 512.0) * display_scale;
     let lock_size = egui::vec2(
         22.0 * scale.uniform() * display_scale,

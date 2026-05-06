@@ -39,8 +39,8 @@ pub fn header(ui: &mut egui::Ui, text: impl Into<String>) {
 }
 
 /// A regular text label (≈ 24 px).
-pub fn label(ui: &mut egui::Ui, text: impl Into<String>) {
-    ui.label(egui::RichText::new(text).size(24.0).color(LABEL_COLOR));
+pub fn label(ui: &mut egui::Ui, text: impl Into<String>) -> egui::Response {
+    ui.label(egui::RichText::new(text).size(24.0).color(LABEL_COLOR))
 }
 
 /// A large rounded button (380 × 80).  Returns the [`egui::Response`] so the

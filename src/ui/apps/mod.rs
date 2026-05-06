@@ -127,7 +127,7 @@ fn show_open_windows(
                     .show(ui, |ui| {
                         let action = match &mut entry.event.app_type {
                             Applications::TextViewer { content } => {
-                                show_text_viewer(ui, content);
+                                show_text_viewer(ui, content, &scale);
                                 WindowAction::None
                             }
                             Applications::FileExplorer {

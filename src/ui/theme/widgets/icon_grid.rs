@@ -19,7 +19,7 @@ const SPACING_X_DESIGN: f32 = 24.0;
 const SPACING_Y_DESIGN: f32 = 32.0;
 
 /// Extra vertical space below the icon image reserved for the label row.
-const LABEL_ROW_DESIGN: f32 = 48.0;
+const LABEL_ROW_DESIGN: f32 = 72.0;
 
 /// Label font size at design resolution.
 const LABEL_FONT_DESIGN: f32 = 18.0;

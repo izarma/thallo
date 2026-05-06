@@ -80,7 +80,7 @@ fn show_desktop(
                 egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
                 egui::Color32::WHITE,
             );
-            ui.add_space(40.0);
+            ui.add_space(scale.py(64.0));
             match show_icon_grid(
                 ui,
                 "desktop_icons",

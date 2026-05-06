@@ -275,7 +275,7 @@ fn update_settings(
     active_mg: Res<ActiveMinigame>,
 ) {
     let has_active_minigame = active_mg.0.is_some();
-    let target_intensity = if has_active_minigame { 0.005 } else { 0.0 };
+    let target_intensity = if has_active_minigame { 0.001 } else { 0.0 };
     let dt = time.delta_secs();
 
     for mut s in &mut settings {
