@@ -1,16 +1,13 @@
 use bevy_egui::egui;
 
 use crate::ui::theme::{
-    palette::{
-        BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, BUTTON_TEXT_COLOR, apply_button_theme,
-    },
+    palette::{BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, HEADER_COLOR, apply_button_theme},
     widgets::primitives::truncate_label,
 };
 
 /// Design-space sizes at 1920×1080.  Callers scale these via `DesignScale`
 /// before passing them in — the widget itself is resolution-agnostic.
 pub const TAB_DESIGN_W: f32 = 226.0; // half of the 452-wide spritesheet
-pub const TAB_DESIGN_H: f32 = 28.0;
 pub const START_DESIGN_W: f32 = 68.0;
 pub const TASKBAR_DESIGN_H: f32 = 28.0;
 
@@ -22,9 +19,9 @@ const TAB_UV_ACTIVE: egui::Rect =
 
 /// A task-bar button representing an open application window.
 ///
-/// `is_active` — true when the window is visible (not minimised).
-/// `tab_size`  — pass `scale.px(TAB_DESIGN_W, TAB_DESIGN_H)` from the calling system.
-///
+/// `is_active` true when the window is visible (not minimised).
+/// `tab_size`pass `scale.px(TAB_DESIGN_W, TAB_DESIGN_H)` from the calling system.
+/// `font_size` already scaled with DesignScale
 /// Returns the [`egui::Response`] so the caller can check `.clicked()`.
 pub fn taskbar_app_button(
     ui: &mut egui::Ui,
@@ -32,6 +29,7 @@ pub fn taskbar_app_button(
     is_active: bool,
     icon: Option<egui::TextureId>,
     tab_size: egui::Vec2,
+    font_size: f32,
 ) -> egui::Response {
     let label: String = label.into();
     let display = truncate_label(&label, TASKBAR_LABEL_MAX_CHARS);
@@ -58,7 +56,6 @@ pub fn taskbar_app_button(
             ui.painter()
                 .rect_filled(rect, egui::CornerRadius::same(4), fallback_color);
         }
-        let font_size = (15.0 * (tab_size.y / TASKBAR_DESIGN_H)).max(8.0);
         ui.painter().text(
             rect.center(),
             egui::Align2::CENTER_CENTER,
@@ -84,6 +81,7 @@ pub fn taskbar_group_button(
     icon: Option<egui::TextureId>,
     tab_size: egui::Vec2,
     windows: &[GroupedWindow],
+    font_size: f32,
 ) -> Option<egui::Id> {
     let label: String = label.into();
     let count = windows.len();
@@ -97,7 +95,6 @@ pub fn taskbar_group_button(
         let popup_open = egui::Popup::is_id_open(ui.ctx(), popup_id);
         let draw_active = is_active || popup_open;
         paint_tab_bg(ui, rect, &response, draw_active, icon);
-        let font_size = (15.0 * (tab_size.y / TASKBAR_DESIGN_H)).max(8.0);
         ui.painter().text(
             rect.center(),
             egui::Align2::CENTER_CENTER,
@@ -112,20 +109,23 @@ pub fn taskbar_group_button(
     // Popup::menu handles click-to-toggle and CloseOnClick automatically.
     // The taskbar sits at the bottom of the screen so egui's auto-align
     // will open the menu above it.
-    egui::Popup::menu(&response).show(|ui| {
+    egui::Popup::menu(&response).width(tab_size.x).show(|ui| {
         ui.set_min_width(tab_size.x);
         for win in windows {
             let row_label = truncate_label(&win.name, TASKBAR_LABEL_MAX_CHARS);
             let text_color = if win.is_minimized {
                 egui::Color32::from_gray(160)
             } else {
-                BUTTON_TEXT_COLOR
+                HEADER_COLOR
             };
             apply_button_theme(ui);
             let btn = ui.add_sized(
-                [ui.available_width(), 20.0],
-                egui::Button::new(egui::RichText::new(row_label).size(14.0).color(text_color))
-                    .corner_radius(egui::CornerRadius::same(4)),
+                tab_size,
+                egui::Button::new(
+                    egui::RichText::new(row_label)
+                        .size(font_size)
+                        .color(text_color),
+                ),
             );
             if btn.clicked() {
                 // Menu closes itself on click (CloseOnClick is Popup::menu default).
@@ -139,14 +139,19 @@ pub fn taskbar_group_button(
 
 /// A slim full-width menu row button, suitable for start-menu style lists.
 /// Returns the [`egui::Response`] so the caller can check `.clicked()`.
-pub fn menu_item(ui: &mut egui::Ui, text: impl Into<String>) -> egui::Response {
+pub fn menu_item(
+    ui: &mut egui::Ui,
+    text: impl Into<String>,
+    tab_size: egui::Vec2,
+    font_size: f32,
+) -> egui::Response {
     apply_button_theme(ui);
     ui.add_sized(
-        [ui.available_width(), 20.0],
+        tab_size,
         egui::Button::new(
             egui::RichText::new(text)
-                .size(16.0)
-                .color(BUTTON_TEXT_COLOR),
+                .size(font_size)
+                .color(HEADER_COLOR),
         )
         .right_text("")
         .corner_radius(egui::CornerRadius::same(4)),

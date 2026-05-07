@@ -1,8 +1,14 @@
-use bevy_egui::egui::{self, Color32};
+use bevy_egui::egui::{self};
 
-use crate::ui::theme::{
-    palette::{HEADER_COLOR, LABEL_COLOR},
-    widgets::primitives::progress_bar,
+use crate::{
+    engine::design_scale::DesignScale,
+    ui::theme::{
+        palette::{
+            COLOR_DONE, CONTENT_FONT_SIZE, DECRYPT_THEME, FONT_SMALL, HEADER_COLOR,
+            HEADING_FONT_SIZE, LABEL_COLOR,
+        },
+        widgets::primitives::progress_bar,
+    },
 };
 
 /// Total time (seconds) the decryption progress bar takes to fill.
@@ -23,6 +29,7 @@ pub(super) fn show_encrypted(
     minigames_triggered: &mut u8,
     dt: f32,
     paused: bool,
+    scale: &DesignScale,
 ) -> DecrypterOutput {
     if !paused && *elapsed < DECRYPT_DURATION {
         *elapsed = (*elapsed + dt).min(DECRYPT_DURATION);
@@ -44,11 +51,11 @@ pub(super) fn show_encrypted(
 
     // UI
 
-    let bar_w = 480.0_f32;
-    let bar_h = 16.0_f32;
+    let bar_w = scale.x * 480.;
+    let bar_h = scale.py(16.0);
 
     ui.vertical_centered(|ui| {
-        ui.add_space(36.0);
+        ui.add_space(scale.py(36.0));
 
         // Title
         ui.label(
@@ -57,12 +64,12 @@ pub(super) fn show_encrypted(
             } else {
                 "DECRYPTION COMPLETE"
             })
-            .size(17.0)
+            .size(scale.py(HEADING_FONT_SIZE))
             .color(HEADER_COLOR)
             .strong(),
         );
 
-        ui.add_space(6.0);
+        ui.add_space(scale.py(6.0));
 
         // Animated sub-label
         let dot_count = ((*elapsed / 0.45) as usize) % 4;
@@ -73,36 +80,31 @@ pub(super) fn show_encrypted(
         };
         ui.label(
             egui::RichText::new(status_text)
-                .size(11.0)
+                .size(scale.py(CONTENT_FONT_SIZE))
                 .color(LABEL_COLOR),
         );
 
-        ui.add_space(20.0);
-
+        ui.add_space(scale.py(20.0));
         // Progress bar
         progress_bar(ui, progress, bar_w, bar_h);
-        ui.add_space(18.0);
+        ui.add_space(scale.py(18.0));
         // Animated hex scan line (hidden once complete)
         if progress < 1.0 {
             ui.label(
                 egui::RichText::new(hex_scan_line(*elapsed))
-                    .size(10.0)
-                    .color(Color32::from_rgb(80, 200, 110))
+                    .size(scale.py(FONT_SMALL))
+                    .color(DECRYPT_THEME)
                     .monospace(),
             );
 
-            ui.add_space(14.0);
+            ui.add_space(scale.py(14.0));
 
             // Minigame checkpoint indicators (stubbed)
             ui.horizontal_centered(|ui| {
                 for (i, &threshold) in MINIGAME_CHECKPOINTS.iter().enumerate() {
                     let bit = 1u8 << i;
                     let done = (*minigames_triggered & bit) != 0;
-                    let color = if done {
-                        Color32::from_rgb(80, 200, 110)
-                    } else {
-                        Color32::from_rgb(55, 55, 70)
-                    };
+                    let color = if done { COLOR_DONE } else { DECRYPT_THEME };
                     let label = format!(
                         "{} EVENT_{} @ {:.0}%",
                         if done { "◉" } else { "○" },
@@ -111,12 +113,12 @@ pub(super) fn show_encrypted(
                     );
                     ui.label(
                         egui::RichText::new(label)
-                            .size(9.0)
+                            .size(scale.py(FONT_SMALL))
                             .color(color)
                             .monospace(),
                     );
                     if i + 1 < MINIGAME_CHECKPOINTS.len() {
-                        ui.add_space(10.0);
+                        ui.add_space(scale.uniform() * 10.0);
                     }
                 }
             });

@@ -1,10 +1,11 @@
 use bevy_egui::egui;
 
-use crate::engine::{design_scale::DesignScale, file_system::FsPath};
+use crate::{
+    engine::{design_scale::DesignScale, file_system::FsPath},
+    ui::theme::palette::{DEEP_RED_THEME, SYSTEM_FONT_SIZE},
+};
 
-const SEGMENT_FONT_DESIGN: f32 = 16.0;
 const ADDR_LEFT_PAD_DESIGN: f32 = 8.0;
-const ITEM_SPACING_DESIGN: f32 = 8.0;
 
 /// An address bar with a back button.
 /// Returns `true` if the back button was clicked.
@@ -15,14 +16,15 @@ pub fn address_bar(
     scale: &DesignScale,
 ) -> bool {
     let mut go_back = false;
-    let font_size = scale.py(SEGMENT_FONT_DESIGN);
+    let font_size = scale.py(SYSTEM_FONT_SIZE);
+    ui.add_space(scale.x * 4.0);
     ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = scale.uniform() * ITEM_SPACING_DESIGN;
+        // ui.spacing_mut().item_spacing.x = scale.uniform() * ITEM_SPACING_DESIGN;
         ui.add_space(scale.uniform() * ADDR_LEFT_PAD_DESIGN);
         if ui
             .add_enabled(
                 can_go_back,
-                egui::Button::new(egui::RichText::new("◀").size(font_size)),
+                egui::Button::new(egui::RichText::new("◀").size(font_size)).fill(DEEP_RED_THEME),
             )
             .clicked()
         {

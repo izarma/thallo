@@ -6,7 +6,6 @@ pub(crate) fn show_text_viewer(ui: &mut egui::Ui, content: &str, scale: &DesignS
     ScrollArea::vertical()
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            // Apply our exact padding using an egui::Frame
             Frame::default()
                 .inner_margin(Margin {
                     left: (20.0 * scale.x) as i8,
@@ -16,7 +15,7 @@ pub(crate) fn show_text_viewer(ui: &mut egui::Ui, content: &str, scale: &DesignS
                 })
                 .show(ui, |ui| {
                     ui.style_mut().interaction.selectable_labels = true;
-                    primitives::label(ui, content)
+                    primitives::label(ui, content, &scale)
                 });
         });
 }

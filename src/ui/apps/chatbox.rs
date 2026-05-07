@@ -9,8 +9,8 @@ use crate::{
         system_apps::ChatBoxState,
     },
     ui::theme::palette::{
-        CHATBOX_ANON, CHATBOX_META, CHATBOX_PLAYER, CHATBOX_SEND_TEXT, DEEP_RED_THEME, FONT_CHAT,
-        FONT_CHAT_SM,
+        CHATBOX_ANON, CONTENT_FONT_SIZE, DEEP_RED_THEME, FONT_CHAT, FONT_CHAT_SM, LABEL_COLOR,
+        LABEL_META, RED_CONTRAST_THEME,
     },
 };
 
@@ -25,8 +25,8 @@ const STATUS_MARGIN: f32 = 20.0;
 /// Width of the right contact-panel sidebar (logo area).
 const SIDEBAR_RATIO: f32 = 0.288;
 
-const SEND_BUTTON_HEIGHT: f32 = 36.0;
-const SEND_BUTTON_WIDTH: f32 = 90.0;
+const SEND_BUTTON_HEIGHT: f32 = 48.0;
+const SEND_BUTTON_WIDTH: f32 = 120.0;
 
 /// Seconds between each character appearing for anon's message.
 const TYPING_SPEED: f32 = 18.0; // chars / second
@@ -187,7 +187,7 @@ fn render_messages(
                 ui.label(
                     RichText::new("anon is typing…")
                         .font(font.clone())
-                        .color(CHATBOX_META)
+                        .color(LABEL_META)
                         .italics(),
                 );
             }
@@ -228,7 +228,7 @@ fn render_status_bar(
                     ui.label(
                         RichText::new("| Status: Online")
                             .font(font.clone())
-                            .color(CHATBOX_META)
+                            .color(LABEL_META)
                             .italics(),
                     );
                 }
@@ -244,13 +244,13 @@ fn render_status_bar(
                         ui.label(
                             RichText::new("[PRESS ANY KEYS TO TYPE THE RESPONSE]")
                                 .font(font.clone())
-                                .color(CHATBOX_META),
+                                .color(LABEL_META),
                         );
                     } else {
                         ui.label(
                             RichText::new(input.as_str())
                                 .font(font.clone())
-                                .color(CHATBOX_PLAYER),
+                                .color(LABEL_COLOR),
                         );
                     }
                 }
@@ -259,7 +259,7 @@ fn render_status_bar(
                     ui.label(
                         RichText::new("| Status: Offline")
                             .font(font.clone())
-                            .color(CHATBOX_META)
+                            .color(LABEL_META)
                             .italics(),
                     );
                 }
@@ -271,8 +271,8 @@ fn render_status_bar(
                             scale.px(SEND_BUTTON_WIDTH, SEND_BUTTON_HEIGHT),
                             egui::Button::new(
                                 RichText::new("Send")
-                                    .size(scale.py(FONT_CHAT))
-                                    .color(CHATBOX_SEND_TEXT)
+                                    .size(scale.py(CONTENT_FONT_SIZE))
+                                    .color(RED_CONTRAST_THEME)
                                     .strong(),
                             ),
                         )
@@ -313,11 +313,7 @@ fn bubble(ui: &mut egui::Ui, text: &str, is_player: bool, font: &FontId, font_sm
     }
     ui.separator();
     let name = if is_player { "operator" } else { "anon" };
-    let name_color = if is_player {
-        CHATBOX_META
-    } else {
-        CHATBOX_ANON
-    };
+    let name_color = if is_player { LABEL_META } else { CHATBOX_ANON };
     let max_w = ui.available_width() * 0.75;
 
     let alignment = if is_player {
@@ -334,6 +330,6 @@ fn bubble(ui: &mut egui::Ui, text: &str, is_player: bool, font: &FontId, font_sm
                 .color(name_color)
                 .strong(),
         );
-        ui.label(RichText::new(text).font(font.clone()).color(CHATBOX_PLAYER));
+        ui.label(RichText::new(text).font(font.clone()).color(LABEL_COLOR));
     });
 }

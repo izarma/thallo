@@ -1,31 +1,37 @@
 use bevy::ecs::resource::Resource;
 use bevy_egui::egui::{TextureId, Vec2};
 
-/// File Path Type & Helpers
 pub const HOME_PATH: &str = "Home";
 pub const DESKTOP_PATH: &str = "Home/Desktop";
 
+/// File System Path
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FsPath(String);
 
 impl FsPath {
+    /// new `FsPath` from string.
     pub fn new(s: impl Into<String>) -> Self {
         Self(s.into())
     }
+    /// Returns the path as a string slice.
     pub fn as_str(&self) -> &str {
         &self.0
     }
+    /// Returns an iterator over the path items
     pub fn segments(&self) -> impl Iterator<Item = &str> {
         self.0.split('/').filter(|s| !s.is_empty())
     }
+    /// adds child to path
     pub fn join(&self, name: &str) -> Self {
         Self(format!("{}/{}", self.0.trim_end_matches('/'), name))
     }
+    /// Returns the parent path, if it exists.
     pub fn parent(&self) -> Option<Self> {
         let s = self.0.trim_end_matches('/');
         let idx = s.rfind('/')?;
         Some(Self(s[..idx].to_string()))
     }
+    /// Returns the file name of the path.
     pub fn file_name(&self) -> &str {
         self.0
             .trim_end_matches('/')
@@ -80,7 +86,6 @@ pub enum LockType {
 
 #[allow(dead_code)]
 impl FsNode {
-    /// Constructors
     pub fn folder(name: &str) -> Self {
         Self {
             name: name.to_string(),

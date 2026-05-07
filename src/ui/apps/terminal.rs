@@ -1,15 +1,14 @@
-use bevy_egui::egui::{self, Color32, FontId, RichText, ScrollArea};
+use bevy_egui::egui::{self, FontId, RichText, ScrollArea};
 
-use crate::engine::{design_scale::DesignScale, file_system::FsPath};
+use crate::{
+    engine::{design_scale::DesignScale, file_system::FsPath},
+    ui::theme::palette::{
+        CONTENT_FONT_SIZE, FONT_SMALL, LABEL_COLOR, LABEL_META, RED_CONTRAST_THEME,
+    },
+};
 
 // Texture split: top zone is ~63% (textured dark), bottom ~37% (pure black)
 const TOP_ZONE_RATIO: f32 = 0.68;
-
-const COLOR_DIM: Color32 = Color32::from_rgb(120, 120, 120);
-const COLOR_OUTPUT: Color32 = Color32::from_rgb(180, 180, 180);
-const COLOR_PROMPT: Color32 = Color32::from_rgb(140, 160, 140); // muted green — operator terminal
-const COLOR_INPUT: Color32 = Color32::from_rgb(210, 210, 210);
-const COLOR_HEADER: Color32 = Color32::from_rgb(100, 110, 100);
 
 const BOOT_LINES: &[&str] = &[
     "ST-OS v4.2.0 [CLASSIFIED BUILD]",
@@ -30,8 +29,8 @@ pub(crate) fn show_terminal(
     scale: &DesignScale,
     is_focused: bool,
 ) -> Option<String> {
-    let font = FontId::monospace(scale.py(12.0));
-    let font_sm = FontId::monospace(scale.py(10.5));
+    let font = FontId::monospace(scale.py(CONTENT_FONT_SIZE));
+    let font_sm = FontId::monospace(scale.py(FONT_SMALL));
     let total_rect = ui.available_rect_before_wrap();
     let split_y = total_rect.min.y + total_rect.height() * TOP_ZONE_RATIO;
 
@@ -55,23 +54,23 @@ pub(crate) fn show_terminal(
                     // Header
                     ui.label(
                         RichText::new("┌─ ST-OS TERMINAL ───────────────────────────────────┐")
-                            .font(font_sm.clone())
-                            .color(COLOR_HEADER),
+                            .font(font.clone())
+                            .color(RED_CONTRAST_THEME),
                     );
-                    ui.add_space(4.0);
+                    ui.add_space(scale.py(4.0));
 
                     // Boot lines
                     for line in BOOT_LINES {
-                        ui.label(RichText::new(*line).font(font_sm.clone()).color(COLOR_DIM));
+                        ui.label(RichText::new(*line).font(font_sm.clone()).color(LABEL_META));
                     }
 
                     // Command history
                     for line in history {
                         let (color, text) = if line.starts_with('>') {
                             // echoed command
-                            (COLOR_PROMPT, line.as_str())
+                            (RED_CONTRAST_THEME, line.as_str())
                         } else {
-                            (COLOR_OUTPUT, line.as_str())
+                            (LABEL_COLOR, line.as_str())
                         };
                         ui.label(RichText::new(text).font(font.clone()).color(color));
                     }
@@ -91,24 +90,24 @@ pub(crate) fn show_terminal(
             // Separator line
             ui.label(
                 RichText::new("└────────────────────────────────────────────────────┘")
-                    .font(font_sm.clone())
-                    .color(COLOR_HEADER),
+                    .font(font.clone())
+                    .color(RED_CONTRAST_THEME),
             );
-            ui.add_space(4.0);
+            ui.add_space(scale.py(4.0));
 
             // Prompt + input field
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new(format!("OPER@ST-OS:{}/>", cwd.as_str()))
                         .font(font.clone())
-                        .color(COLOR_PROMPT),
+                        .color(RED_CONTRAST_THEME),
                 );
 
                 let input_id = ui.make_persistent_id("terminal_input");
                 let field = egui::TextEdit::singleline(input)
                     .id(input_id)
                     .font(font.clone())
-                    .text_color(COLOR_INPUT)
+                    .text_color(LABEL_COLOR)
                     .frame(false)
                     .desired_width(f32::INFINITY)
                     .cursor_at_end(true);
