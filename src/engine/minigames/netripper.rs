@@ -2,9 +2,12 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 use rand::Rng;
 
-use crate::engine::{
-    design_scale::DesignScale,
-    minigames::{ActiveMinigame, MinigameOutcome, MinigameTextures, MinigameType},
+use crate::{
+    engine::{
+        design_scale::DesignScale,
+        minigames::{ActiveMinigame, MinigameOutcome, MinigameTextures, MinigameType},
+    },
+    ui::theme::palette::HEADING_FONT_SIZE,
 };
 
 #[derive(Clone)]
@@ -126,7 +129,7 @@ pub(super) fn render_netripper(
     scale: &DesignScale,
     textures: &MinigameTextures,
 ) {
-    let display_scale = 2.0;
+    let display_scale = 1.5;
     let bg_size = scale.px(512.0, 512.0) * display_scale;
 
     // Scale node spacing relatively to the background image dimensions to ensure alignment
@@ -171,7 +174,7 @@ pub(super) fn render_netripper(
                 timer_rect.center(),
                 egui::Align2::CENTER_CENTER,
                 format!("{:.1}", remaining_secs),
-                egui::FontId::proportional(20.0 * scale.uniform()),
+                egui::FontId::proportional(HEADING_FONT_SIZE * scale.uniform()),
                 color,
             );
 

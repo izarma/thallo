@@ -6,11 +6,19 @@ use crate::engine::scripted_events::{
 pub(super) fn build_act1_dialogues() -> Dialogues {
     Dialogues {
         lines: vec![
-            DialogueLine::new(false, "Hey, you’re in?"), // false is anon
+            DialogueLine::new(false, "Hey, you’re in?").on_complete(
+                ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(
+                    NewFileReceiving::BruteForce,
+                )),
+            ), // false is anon
             DialogueLine::new(true, "i think so. what are we looking for exactly?"), // true is player
             DialogueLine::new(
                 false,
                 "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.",
+            ).on_complete(
+                ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(
+                    NewFileReceiving::NetRipper,
+                )),
             ),
             DialogueLine::new(true, "isn't this terminal connected to the rest?"),
             DialogueLine::new(
@@ -90,7 +98,7 @@ pub(super) fn build_act1_file_triggers(file_triggers: &mut FileDialogueTriggers)
             DialogueLine::new(false, "Okay, Thal, calm down."),
             DialogueLine::new(true, "??? are you an idiot?"),
             DialogueLine::new(false, "No."),
-            DialogueLine::new(true, "there is literally an explanation to our amnesia and more, and youre saying to me to be calm???"),
+            DialogueLine::new(true, "there is literally an explanation to our amnesia and more, and you're telling me to be calm???"),
             DialogueLine::new(false, "Yes, I did fucking see it. What do you want me to say?"),
             DialogueLine::new(true, "kostya, youre getting on my nerves right now. we need to dig deeper. i want to know who the fuck is behind this."),
             DialogueLine::new(true, "and"),

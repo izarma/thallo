@@ -1,16 +1,18 @@
 use bevy::prelude::*;
-use bevy_egui::egui::{self, Color32};
+use bevy_egui::egui::{self};
 
-use crate::ui::theme::{
-    palette::{HEADER_COLOR, LABEL_COLOR},
-    widgets::primitives::progress_bar,
+use crate::{
+    engine::design_scale::DesignScale,
+    ui::theme::{
+        palette::{
+            COLOR_DONE, CONTENT_FONT_SIZE, FONT_SMALL, HEADER_COLOR, HEADING_FONT_SIZE,
+            LABEL_COLOR, RIPPER_THEME,
+        },
+        widgets::primitives::progress_bar,
+    },
 };
 
 const TRANSMIT_DURATION: f32 = 12.0;
-
-const COLOR_RELAY: Color32 = Color32::from_rgb(80, 160, 200);
-const COLOR_RELAY_DONE: Color32 = Color32::from_rgb(60, 200, 120);
-const COLOR_RELAY_PENDING: Color32 = Color32::from_rgb(55, 55, 70);
 
 pub struct NetRipperOutput {
     pub complete: bool,
@@ -32,6 +34,7 @@ pub(super) fn show_netripper_transmit(
     minigames_triggered: &mut u8,
     dt: f32,
     paused: bool,
+    scale: &DesignScale,
 ) -> NetRipperOutput {
     if !paused && *elapsed < TRANSMIT_DURATION {
         *elapsed = (*elapsed + dt).min(TRANSMIT_DURATION);
@@ -52,7 +55,7 @@ pub(super) fn show_netripper_transmit(
     // UI
 
     ui.vertical_centered(|ui| {
-        ui.add_space(36.0);
+        ui.add_space(scale.py(36.0));
 
         // Title
         ui.label(
@@ -61,22 +64,22 @@ pub(super) fn show_netripper_transmit(
             } else {
                 "TRANSMISSION COMPLETE"
             })
-            .size(17.0)
+            .size(scale.py(HEADING_FONT_SIZE))
             .color(HEADER_COLOR)
             .strong(),
         );
 
-        ui.add_space(4.0);
+        ui.add_space(scale.py(4.0));
 
         // Target line
         ui.label(
             egui::RichText::new(format!("TARGET: {}", target_name))
-                .size(11.0)
-                .color(COLOR_RELAY)
+                .size(scale.py(CONTENT_FONT_SIZE))
+                .color(RIPPER_THEME)
                 .monospace(),
         );
 
-        ui.add_space(10.0);
+        ui.add_space(scale.py(10.0));
 
         // Animated sub-label
         let dot_count = ((*elapsed / 0.45) as usize) % 4;
@@ -87,45 +90,39 @@ pub(super) fn show_netripper_transmit(
         };
         ui.label(
             egui::RichText::new(status_text)
-                .size(11.0)
+                .size(scale.py(CONTENT_FONT_SIZE))
                 .color(LABEL_COLOR),
         );
 
-        ui.add_space(20.0);
-
-        progress_bar(ui, progress, 480.0, 16.0);
-
-        ui.add_space(18.0);
+        ui.add_space(scale.py(20.0));
+        progress_bar(ui, progress, scale.x * 480.0, scale.py(16.0));
+        ui.add_space(scale.py(18.0));
 
         // Animated packet scan line
         if progress < 1.0 {
             ui.label(
                 egui::RichText::new(packet_scan_line(*elapsed))
-                    .size(10.0)
-                    .color(Color32::from_rgb(80, 160, 200))
+                    .size(scale.py(FONT_SMALL))
+                    .color(RIPPER_THEME)
                     .monospace(),
             );
 
-            ui.add_space(14.0);
+            ui.add_space(scale.py(14.0));
 
             // Relay hop indicators
             ui.horizontal_centered(|ui| {
                 for (i, &(label, _)) in RELAYS.iter().enumerate() {
                     let bit = 1u8 << i;
                     let done = (*minigames_triggered & bit) != 0;
-                    let color = if done {
-                        COLOR_RELAY_DONE
-                    } else {
-                        COLOR_RELAY_PENDING
-                    };
+                    let color = if done { COLOR_DONE } else { RIPPER_THEME };
                     ui.label(
                         egui::RichText::new(format!("{} {}", if done { "◉" } else { "○" }, label))
-                            .size(9.0)
+                            .size(scale.py(FONT_SMALL))
                             .color(color)
                             .monospace(),
                     );
                     if i + 1 < RELAYS.len() {
-                        ui.add_space(10.0);
+                        ui.add_space(scale.uniform() * 10.0);
                     }
                 }
             });

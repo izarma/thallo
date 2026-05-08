@@ -2,7 +2,10 @@ use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass};
 
 use crate::{
-    engine::{audio::sound_effect, screens::Screen, scripted_events::UnlockState},
+    engine::{
+        audio::sound_effect, design_scale::DesignScale, screens::Screen,
+        scripted_events::UnlockState,
+    },
     game::FileAssets,
     ui::{menus::Menu, theme::widgets::primitives},
 };
@@ -22,10 +25,10 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
-fn connecting_sunday(mut contexts: EguiContexts) -> Result {
+fn connecting_sunday(mut contexts: EguiContexts, scale: Res<DesignScale>) -> Result {
     let ctx = contexts.ctx_mut()?;
     primitives::centered_panel(ctx, "connecting_sunday", |ui| {
-        primitives::header(ui, "Connecting to Sunday...");
+        primitives::header(ui, "Connecting to Sunday...", &scale);
     });
     Ok(())
 }

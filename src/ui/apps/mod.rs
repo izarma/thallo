@@ -60,6 +60,7 @@ const WINDOW_DESIGN_H: f32 = 718.0;
 const WINDOW_PAD_X: f32 = 6.0;
 const WINDOW_PAD_BOT: f32 = 6.0;
 
+// Frame should be used better here before fixing further ui stuff
 fn show_open_windows(
     mut cmd: Commands,
     mut contexts: EguiContexts,
@@ -127,7 +128,7 @@ fn show_open_windows(
                     .show(ui, |ui| {
                         let action = match &mut entry.event.app_type {
                             Applications::TextViewer { content } => {
-                                show_text_viewer(ui, content);
+                                show_text_viewer(ui, content, &scale);
                                 WindowAction::None
                             }
                             Applications::FileExplorer {
@@ -139,7 +140,7 @@ fn show_open_windows(
                                 WindowAction::None
                             }
                             Applications::Unlocker { path, input } => {
-                                if show_unlocker(ui, input) {
+                                if show_unlocker(ui, input, &scale) {
                                     WindowAction::UnlockAttempt { path: path.clone() } // is this alright?
                                 } else {
                                     WindowAction::None
@@ -215,8 +216,14 @@ fn show_open_windows(
                                 elapsed,
                                 minigames_triggered,
                             } => {
-                                let output =
-                                    show_encrypted(ui, elapsed, minigames_triggered, dt, paused.0);
+                                let output = show_encrypted(
+                                    ui,
+                                    elapsed,
+                                    minigames_triggered,
+                                    dt,
+                                    paused.0,
+                                    &scale,
+                                );
                                 if let Some(idx) = output.triggered_checkpoint {
                                     cmd.trigger(MinigameTrigger {
                                         checkpoint: idx,
@@ -246,6 +253,7 @@ fn show_open_windows(
                                     minigames_triggered,
                                     dt,
                                     paused.0,
+                                    &scale,
                                 );
                                 if let Some(idx) = output.triggered_checkpoint {
                                     cmd.trigger(MinigameTrigger {

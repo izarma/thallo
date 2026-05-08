@@ -15,13 +15,17 @@ use crate::{
     },
     ui::{
         apps::settings_menu::show_settings_window,
-        theme::widgets::{
-            icon_grid::{
-                ICON_DESIGN_SIZE, IconGridAction, IconGridItem, icon_for_filetype, show_icon_grid,
-            },
-            task_bar::{
-                GroupedWindow, START_DESIGN_W, TAB_DESIGN_H, TAB_DESIGN_W, TASKBAR_DESIGN_H,
-                menu_item, taskbar_app_button, taskbar_group_button,
+        theme::{
+            palette::{DEEP_RED_THEME, SYSTEM_FONT_SIZE},
+            widgets::{
+                icon_grid::{
+                    ICON_DESIGN_SIZE, IconGridAction, IconGridItem, icon_for_filetype,
+                    show_icon_grid,
+                },
+                task_bar::{
+                    GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H, menu_item,
+                    taskbar_app_button, taskbar_group_button,
+                },
             },
         },
     },
@@ -80,7 +84,7 @@ fn show_desktop(
                 egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
                 egui::Color32::WHITE,
             );
-            ui.add_space(40.0);
+            ui.add_space(scale.py(64.0));
             match show_icon_grid(
                 ui,
                 "desktop_icons",
@@ -147,7 +151,8 @@ fn show_task_bar(
 ) -> Result {
     let bar_h = scale.py(TASKBAR_DESIGN_H);
     let start_size = scale.px(START_DESIGN_W, TASKBAR_DESIGN_H);
-    let tab_size = scale.px(TAB_DESIGN_W, TAB_DESIGN_H);
+    let tab_size = scale.px(TAB_DESIGN_W, TASKBAR_DESIGN_H);
+    let font_size = scale.py(SYSTEM_FONT_SIZE);
     let ctx = contexts.ctx_mut()?;
     egui::TopBottomPanel::bottom("task_bar_space")
         .exact_height(bar_h)
@@ -169,10 +174,10 @@ fn show_task_bar(
             ui.painter().hline(
                 bar_rect.min.x..=bar_rect.max.x,
                 bar_rect.min.y,
-                egui::Stroke::new(5.0_f32, egui::Color32::WHITE),
+                egui::Stroke::new(5.0_f32, egui::Color32::WHITE), // todo: scale this better
             );
             egui::Frame::new()
-                .fill(egui::Color32::from_rgb(30, 5, 5))
+                .fill(DEEP_RED_THEME)
                 .inner_margin(egui::Margin::symmetric(0, 0))
                 .show(ui, |ui| {
                     // Force the ui to the full bar width so the clock's
@@ -190,35 +195,36 @@ fn show_task_bar(
                             ui.button("Start")
                         };
 
-                        egui::Popup::menu(&start_clicked).show(|ui| {
-                            ui.set_min_width(200.0);
-                            ui.heading("Start Menu");
-                            if menu_item(ui, "Terminal").clicked() {
-                                cmd.trigger(OpenAppEvent {
-                                    name: "Terminal".to_string(),
-                                    app_type: Applications::Terminal {
-                                        cwd: FsPath::new("Home"),
-                                        history: Vec::new(),
-                                        input: String::new(),
-                                    },
-                                });
-                            }
-                            if menu_item(ui, "File Explorer").clicked() {
-                                cmd.trigger(OpenAppEvent {
-                                    name: HOME_PATH.to_string(),
-                                    app_type: Applications::FileExplorer {
-                                        path: FsPath::new(HOME_PATH),
-                                        selected_item: None,
-                                    },
-                                });
-                            }
-                            if menu_item(ui, "Settings").clicked() {
-                                state.settings_open = true;
-                            }
-                            if menu_item(ui, "Shut Down").clicked() {
-                                app_exit.write(AppExit::Success);
-                            }
-                        });
+                        egui::Popup::menu(&start_clicked)
+                            .width(tab_size.x)
+                            .show(|ui| {
+                                ui.heading("Start Menu");
+                                if menu_item(ui, "Terminal", tab_size, font_size).clicked() {
+                                    cmd.trigger(OpenAppEvent {
+                                        name: "Terminal".to_string(),
+                                        app_type: Applications::Terminal {
+                                            cwd: FsPath::new("Home"),
+                                            history: Vec::new(),
+                                            input: String::new(),
+                                        },
+                                    });
+                                }
+                                if menu_item(ui, "File Explorer", tab_size, font_size).clicked() {
+                                    cmd.trigger(OpenAppEvent {
+                                        name: HOME_PATH.to_string(),
+                                        app_type: Applications::FileExplorer {
+                                            path: FsPath::new(HOME_PATH),
+                                            selected_item: None,
+                                        },
+                                    });
+                                }
+                                if menu_item(ui, "Settings", tab_size, font_size).clicked() {
+                                    state.settings_open = true;
+                                }
+                                if menu_item(ui, "Shut Down", tab_size, font_size).clicked() {
+                                    app_exit.write(AppExit::Success);
+                                }
+                            });
 
                         // Window tabs (grouped or flat)
                         let total = open_windows.windows.len();
@@ -267,6 +273,7 @@ fn show_task_bar(
                                         *is_active,
                                         *icon,
                                         tab_size,
+                                        font_size,
                                     )
                                     .clicked()
                                     {
@@ -275,7 +282,7 @@ fn show_task_bar(
                                 } else {
                                     // Multiple windows of the same type — render grouped with popup
                                     if let Some(window_id) = taskbar_group_button(
-                                        ui, *key, *is_active, *icon, tab_size, windows,
+                                        ui, *key, *is_active, *icon, tab_size, windows, font_size,
                                     ) {
                                         cmd.trigger(ToggleMinimizeEvent { id: window_id });
                                     }
@@ -293,6 +300,7 @@ fn show_task_bar(
                                     is_active,
                                     icon,
                                     tab_size,
+                                    font_size,
                                 )
                                 .clicked()
                                 {
@@ -308,7 +316,7 @@ fn show_task_bar(
                             let time_str = now.format("%H:%M").to_string();
                             ui.label(
                                 egui::RichText::new(time_str)
-                                    .size((13.0 * (tab_size.y / TASKBAR_DESIGN_H)).max(8.0))
+                                    .size(font_size)
                                     .color(egui::Color32::WHITE),
                             );
                             ui.add_space(4.0);
@@ -316,138 +324,6 @@ fn show_task_bar(
                     });
                 });
         });
-
-    // egui::TopBottomPanel::bottom("Task Bar")
-    //     .exact_height(bar_h)
-    //     .frame(
-    //         egui::Frame::new()
-    //             .fill(egui::Color32::from_rgba_unmultiplied(0, 0, 0, 120))
-    //             .inner_margin(egui::Margin::symmetric(0, 0)),
-    //     )
-    //     .show_separator_line(false)
-    //     .show(contexts.ctx_mut()?, |ui| {
-    //         ui.horizontal(|ui| {
-    //             ui.spacing_mut().item_spacing.x = 0.0;
-    //             let start_clicked = if let Some(dt) = desktop_tex.as_deref() {
-    //                 let sized = egui::load::SizedTexture::new(dt.start, start_size);
-    //                 ui.add(egui::Button::image(sized).frame(false))
-    //             } else {
-    //                 ui.button("Start") // graceful fallback while asset loads
-    //             };
-
-    //             // start menu logic
-    //             egui::Popup::menu(&start_clicked).show(|ui| {
-    //                 ui.set_min_width(200.0);
-    //                 ui.heading("Start Menu");
-    //                 if menu_item(ui, "Terminal").clicked() {
-    //                     cmd.trigger(OpenAppEvent {
-    //                         name: "Terminal".to_string(),
-    //                         app_type: Applications::Terminal {
-    //                             cwd: FsPath::new("Home"),
-    //                             history: Vec::new(),
-    //                             input: String::new(),
-    //                         },
-    //                     });
-    //                 }
-    //                 if menu_item(ui, "File Explorer").clicked() {
-    //                     cmd.trigger(OpenAppEvent {
-    //                         name: HOME_PATH.to_string(),
-    //                         app_type: Applications::FileExplorer {
-    //                             path: FsPath::new(HOME_PATH),
-    //                             selected_item: None,
-    //                         },
-    //                     });
-    //                 }
-    //                 if menu_item(ui, "Settings").clicked() {
-    //                     state.settings_open = true;
-    //                 }
-    //                 if menu_item(ui, "Shut Down").clicked() {
-    //                     app_exit.write(AppExit::Success);
-    //                 }
-    //             });
-    //             let total = open_windows.windows.len();
-    //             if total > MAX_UNGROUPED_WINDOWS {
-    //                 let mut groups: Vec<(
-    //                     &'static str,
-    //                     Vec<GroupedWindow>,
-    //                     bool,
-    //                     Option<egui::TextureId>,
-    //                 )> = Vec::new();
-
-    //                 for entry in open_windows.windows.iter() {
-    //                     let key = entry.event.app_type.type_name();
-    //                     if let Some(g) = groups.iter_mut().find(|g| g.0 == key) {
-    //                         if !entry.is_minimized {
-    //                             g.2 = true; // at least one visible → group is active
-    //                         }
-    //                         g.1.push(GroupedWindow {
-    //                             id: entry.id,
-    //                             name: entry.event.name.clone(),
-    //                             is_minimized: entry.is_minimized,
-    //                         });
-    //                     } else {
-    //                         let icon = desktop_tex
-    //                             .as_deref()
-    //                             .map(|dt| dt.icon_for_app(&entry.event.app_type));
-    //                         groups.push((
-    //                             key,
-    //                             vec![GroupedWindow {
-    //                                 id: entry.id,
-    //                                 name: entry.event.name.clone(),
-    //                                 is_minimized: entry.is_minimized,
-    //                             }],
-    //                             !entry.is_minimized,
-    //                             icon,
-    //                         ));
-    //                     }
-    //                 }
-
-    //                 for (key, windows, is_active, icon) in &groups {
-    //                     if windows.len() == 1 {
-    //                         // Single window — render as a normal tab using its actual name
-    //                         if taskbar_app_button(ui, &windows[0].name, *is_active, *icon, tab_size)
-    //                             .clicked()
-    //                         {
-    //                             cmd.trigger(ToggleMinimizeEvent { id: windows[0].id });
-    //                         }
-    //                     } else {
-    //                         // Multiple windows of the same type — render grouped with popup
-    //                         if let Some(window_id) =
-    //                             taskbar_group_button(ui, *key, *is_active, *icon, tab_size, windows)
-    //                         {
-    //                             cmd.trigger(ToggleMinimizeEvent { id: window_id });
-    //                         }
-    //                     }
-    //                 }
-    //             } else {
-    //                 for entry in open_windows.windows.iter() {
-    //                     let is_active = !entry.is_minimized;
-    //                     let icon = desktop_tex
-    //                         .as_deref()
-    //                         .map(|dt| dt.icon_for_app(&entry.event.app_type));
-    //                     if taskbar_app_button(ui, &entry.event.name, is_active, icon, tab_size)
-    //                         .clicked()
-    //                     {
-    //                         cmd.trigger(ToggleMinimizeEvent { id: entry.id });
-    //                     }
-    //                 }
-    //             }
-    //             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-    //                 ui.add_space(6.0);
-
-    //                 // Clock label
-    //                 let now = chrono::Local::now();
-    //                 let time_str = now.format("%H:%M").to_string();
-    //                 ui.label(
-    //                     egui::RichText::new(time_str)
-    //                         .size((13.0 * (tab_size.y / TASKBAR_DESIGN_H)).max(8.0))
-    //                         .color(egui::Color32::WHITE),
-    //                 );
-
-    //                 ui.add_space(4.0);
-    //             });
-    //         })
-    //     });
     Ok(())
 }
 

@@ -1,6 +1,10 @@
 use bevy_egui::egui;
 
-use crate::ui::theme::palette::{BUTTON_TEXT_COLOR, HEADER_COLOR, LABEL_COLOR, apply_button_theme};
+use crate::engine::design_scale::DesignScale;
+use crate::ui::theme::palette::{
+    COLOR_DONE, COLOR_DONE_FILL, COLOR_PROGRESS_BORDER, CONTENT_FONT_SIZE, HEADER_COLOR,
+    HEADING_FONT_SIZE, LABEL_COLOR, apply_button_theme,
+};
 
 /// Wraps `body` in a vertically-and-horizontally centred [`egui::CentralPanel`]
 ///
@@ -29,32 +33,32 @@ pub fn centered_panel(ctx: &egui::Context, id: &str, body: impl FnOnce(&mut egui
 }
 
 /// A large header label (≈ 40 px).
-pub fn header(ui: &mut egui::Ui, text: impl Into<String>) {
+pub fn header(ui: &mut egui::Ui, text: impl Into<String>, scale: &DesignScale) {
     ui.label(
         egui::RichText::new(text)
-            .size(40.0)
+            .size(HEADING_FONT_SIZE * scale.x)
             .color(HEADER_COLOR)
             .strong(),
     );
 }
 
 /// A regular text label (≈ 24 px).
-pub fn label(ui: &mut egui::Ui, text: impl Into<String>) {
-    ui.label(egui::RichText::new(text).size(24.0).color(LABEL_COLOR));
+pub fn label(ui: &mut egui::Ui, text: impl Into<String>, scale: &DesignScale) -> egui::Response {
+    ui.label(
+        egui::RichText::new(text)
+            .size(CONTENT_FONT_SIZE * scale.x)
+            .color(LABEL_COLOR),
+    )
 }
 
 /// A large rounded button (380 × 80).  Returns the [`egui::Response`] so the
 /// caller can check `.clicked()`, `.hovered()`, etc.
-pub fn button(ui: &mut egui::Ui, text: impl Into<String>) -> egui::Response {
+pub fn button(ui: &mut egui::Ui, text: impl Into<String>, scale: &DesignScale) -> egui::Response {
     apply_button_theme(ui);
     ui.add_sized(
-        [380.0, 80.0],
-        egui::Button::new(
-            egui::RichText::new(text)
-                .size(32.0)
-                .color(BUTTON_TEXT_COLOR),
-        )
-        .corner_radius(egui::CornerRadius::same(40)),
+        scale.px(380.0, 80.0),
+        egui::Button::new(egui::RichText::new(text).size(32.0).color(HEADER_COLOR))
+            .corner_radius(egui::CornerRadius::same(40)),
     )
 }
 
@@ -85,11 +89,11 @@ pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32, height: f32) {
     let (outer, _) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::hover());
     let p = ui.painter();
 
-    // 1-px border — colour signals completion
+    // Border — green when done, grey-blue otherwise
     let border = if done {
-        Color32::from_rgb(80, 200, 120)
+        COLOR_DONE
     } else {
-        Color32::from_rgb(100, 100, 120)
+        COLOR_PROGRESS_BORDER
     };
     p.rect_filled(outer, egui::CornerRadius::same(3), border);
 
@@ -104,7 +108,7 @@ pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32, height: f32) {
     // Fill
     if progress > 0.0 {
         let fill = if done {
-            Color32::from_rgb(60, 200, 100)
+            COLOR_DONE_FILL
         } else {
             BUTTON_HOVERED_BG
         };

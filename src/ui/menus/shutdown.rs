@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass};
 
-use crate::ui::{menus::Menu, theme::widgets::primitives};
+use crate::{
+    engine::design_scale::DesignScale,
+    ui::{menus::Menu, theme::widgets::primitives},
+};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Menu::ShutDown), spawn_shutdown_timer);
@@ -17,14 +20,18 @@ fn spawn_shutdown_timer(mut cmd: Commands) {
 }
 
 /// Draws the shutdown screen with egui every frame while in [`Menu::ShutDown`].
-fn shutdown_ui(mut contexts: EguiContexts, timer: Res<ShutdownTimer>) -> Result {
+fn shutdown_ui(
+    mut contexts: EguiContexts,
+    timer: Res<ShutdownTimer>,
+    scale: Res<DesignScale>,
+) -> Result {
     let remaining = (timer.0.remaining_secs().ceil() as u32).max(0);
     let ctx = contexts.ctx_mut()?;
 
     primitives::centered_panel(ctx, "shutdown_menu", |ui| {
-        primitives::header(ui, "ACCESS DENIED, UNIDENTIFIED ENTRY");
+        primitives::header(ui, "ACCESS DENIED, UNIDENTIFIED ENTRY", &scale);
         ui.add_space(8.0);
-        primitives::header(ui, format!("{remaining}"));
+        primitives::header(ui, format!("{remaining}"), &scale);
     });
 
     Ok(())

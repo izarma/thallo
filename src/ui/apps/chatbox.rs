@@ -1,29 +1,35 @@
-use bevy_egui::egui::{self, Color32, FontId, RichText, ScrollArea};
-
-use crate::engine::{
-    design_scale::DesignScale,
-    scripted_events::{DialogueLine, Dialogues},
-    system_apps::ChatBoxState,
+use bevy_egui::egui::{
+    self, FontId, RichText, ScrollArea, scroll_area::ScrollBarVisibility, style::ScrollStyle,
 };
 
-// ── Layout ratios (relative to the content rect below the title bar) ─────────
+use crate::{
+    engine::{
+        design_scale::DesignScale,
+        scripted_events::{DialogueLine, Dialogues},
+        system_apps::ChatBoxState,
+    },
+    ui::theme::palette::{
+        CHATBOX_ANON, CONTENT_FONT_SIZE, DEEP_RED_THEME, FONT_CHAT, FONT_CHAT_SM, LABEL_COLOR,
+        LABEL_META, RED_CONTRAST_THEME,
+    },
+};
+
+// Layout ratios (relative to the content rect below the title bar)
 
 /// How far down the decorative header strip extends — skip past it.
-const HEADER_RATIO: f32 = 0.200;
+const HEADER_RATIO: f32 = 0.155;
 /// Height of the bottom status bar region.
 const STATUS_RATIO: f32 = 0.402;
+/// Margin around the status.
+const STATUS_MARGIN: f32 = 20.0;
 /// Width of the right contact-panel sidebar (logo area).
 const SIDEBAR_RATIO: f32 = 0.288;
 
+const SEND_BUTTON_HEIGHT: f32 = 48.0;
+const SEND_BUTTON_WIDTH: f32 = 120.0;
+
 /// Seconds between each character appearing for anon's message.
 const TYPING_SPEED: f32 = 18.0; // chars / second
-
-// Colours - match the dark-red / monochrome chatbox palette
-const COLOR_ANON: Color32 = Color32::from_rgb(200, 80, 80);
-const COLOR_PLAYER: Color32 = Color32::from_rgb(180, 180, 180);
-const COLOR_META: Color32 = Color32::from_rgb(110, 90, 90);
-const COLOR_SEND_TEXT: Color32 = Color32::from_rgb(210, 160, 160);
-const COLOR_STATUS_BG: Color32 = Color32::from_rgb(30, 5, 5);
 
 pub fn show_chatbox(
     ui: &mut egui::Ui,
@@ -132,34 +138,44 @@ fn render_messages(
     state: &ChatBoxState,
     scale: &DesignScale,
 ) {
-    let font = FontId::proportional(scale.py(14.0));
-    let font_sm = FontId::proportional(scale.py(12.5));
+    let font = FontId::proportional(scale.py(FONT_CHAT));
+    let font_sm = FontId::proportional(scale.py(FONT_CHAT_SM));
 
     let mut msg_ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
     egui::Frame::new()
         .inner_margin(egui::Margin {
             left: (scale.x * 14.0) as i8,
-            right: (scale.x * 10.0) as i8,
-            top: (scale.y * 8.0) as i8,
-            bottom: (scale.y * 15.0) as i8,
+            right: (scale.x * 4.0) as i8,
+            top: 0,
+            bottom: (scale.y * 8.0) as i8,
         })
         .show(&mut msg_ui, |ui| {
             // Messages fill available height; "anon is typing" pins to bottom.
-            let typing_h = if matches!(state, ChatBoxState::AnonTyping { .. }) {
-                scale.py(18.0)
-            } else {
-                0.0
+            let indicator_gap = scale.py(4.0);
+            let indicator_h = scale.py(FONT_CHAT_SM) + indicator_gap;
+            let scroll_h = ui.available_height() - indicator_h;
+            ui.spacing_mut().scroll = ScrollStyle {
+                floating: true,
+                bar_width: scale.uniform() * 10.0,
+                bar_outer_margin: scale.uniform() * 2.0,
+                floating_width: scale.uniform() * 4.0,
+                floating_allocated_width: scale.uniform() * 20.0,
+                foreground_color: true,
+                dormant_background_opacity: 0.0,
+                active_background_opacity: 0.4,
+                interact_background_opacity: 0.7,
+                dormant_handle_opacity: 0.0,
+                active_handle_opacity: 0.6,
+                interact_handle_opacity: 1.0,
+                ..ScrollStyle::solid()
             };
-
-            let scroll_h = ui.available_height() - typing_h;
-
             ScrollArea::vertical()
                 .max_height(scroll_h)
                 .auto_shrink([false, false])
                 .stick_to_bottom(true)
+                .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                 .show(ui, |ui| {
-                    ui.spacing_mut().item_spacing.y = 8.0;
-
+                    ui.spacing_mut().item_spacing.y = scale.py(8.0);
                     for DialogueLine { speaker, text, .. } in displayed {
                         bubble(ui, text, *speaker, &font, &font_sm);
                     }
@@ -167,11 +183,11 @@ fn render_messages(
 
             // "anon is typing…" indicator below scroll area.
             if matches!(state, ChatBoxState::AnonTyping { .. }) {
-                ui.add_space(2.0);
+                ui.add_space(scale.py(2.0));
                 ui.label(
                     RichText::new("anon is typing…")
-                        .font(font_sm.clone())
-                        .color(COLOR_META)
+                        .font(font.clone())
+                        .color(LABEL_META)
                         .italics(),
                 );
             }
@@ -190,20 +206,21 @@ fn render_status_bar(
     is_focused: bool,
 ) -> bool {
     let mut send = false;
-    let font = FontId::proportional(scale.py(14.0));
+    let font = FontId::proportional(scale.py(FONT_CHAT_SM));
+    let mut ready_to_send = false;
 
     // Paint a solid fill over the baked-in "Status: Online" text so our
     // overlay is readable regardless of window state.
     ui.painter()
-        .rect_filled(rect, egui::CornerRadius::ZERO, COLOR_STATUS_BG);
+        .rect_filled(rect, egui::CornerRadius::ZERO, DEEP_RED_THEME);
 
     let mut status_ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
     egui::Frame::new()
         .inner_margin(egui::Margin {
-            left: (scale.x * 10.0) as i8,
-            right: (scale.x * 10.0) as i8,
-            top: (scale.y * 10.0) as i8,
-            bottom: (scale.y * 10.0) as i8,
+            left: (scale.x * STATUS_MARGIN) as i8,
+            right: (scale.x * STATUS_MARGIN) as i8,
+            top: (scale.y * STATUS_MARGIN) as i8,
+            bottom: (scale.y * STATUS_MARGIN) as i8,
         })
         .show(&mut status_ui, |ui| {
             match state {
@@ -211,7 +228,7 @@ fn render_status_bar(
                     ui.label(
                         RichText::new("| Status: Online")
                             .font(font.clone())
-                            .color(COLOR_META)
+                            .color(LABEL_META)
                             .italics(),
                     );
                 }
@@ -222,34 +239,19 @@ fn render_status_bar(
                         .get(dialogues.index)
                         .map(|l| l.text.chars().count())
                         .unwrap_or(0);
-                    let ready_to_send = *chars_revealed >= total_chars;
-                    ui.label(
-                        RichText::new(if input.is_empty() {
-                            "[PRESS ANY KEYS TO TYPE THE RESPONSE]"
-                        } else {
-                            input.as_str()
-                        })
-                        .font(font.clone())
-                        .color(COLOR_PLAYER),
-                    );
-                    if ready_to_send {
-                        ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
-                            let send_clicked = ui
-                                .add(egui::Button::new(
-                                    RichText::new("Send")
-                                        .size(scale.py(11.0))
-                                        .color(COLOR_SEND_TEXT)
-                                        .strong(),
-                                ))
-                                .clicked();
-
-                            let enter_pressed =
-                                is_focused && ui.input(|i| i.key_pressed(egui::Key::Enter));
-
-                            if send_clicked || enter_pressed {
-                                send = true;
-                            }
-                        });
+                    ready_to_send = *chars_revealed >= total_chars;
+                    if input.is_empty() {
+                        ui.label(
+                            RichText::new("[PRESS ANY KEYS TO TYPE THE RESPONSE]")
+                                .font(font.clone())
+                                .color(LABEL_META),
+                        );
+                    } else {
+                        ui.label(
+                            RichText::new(input.as_str())
+                                .font(font.clone())
+                                .color(LABEL_COLOR),
+                        );
                     }
                 }
 
@@ -257,11 +259,33 @@ fn render_status_bar(
                     ui.label(
                         RichText::new("| Status: Offline")
                             .font(font.clone())
-                            .color(COLOR_META)
+                            .color(LABEL_META)
                             .italics(),
                     );
                 }
             };
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
+                let send_clicked = ui
+                    .add_enabled_ui(ready_to_send, |ui| {
+                        ui.add_sized(
+                            scale.px(SEND_BUTTON_WIDTH, SEND_BUTTON_HEIGHT),
+                            egui::Button::new(
+                                RichText::new("Send")
+                                    .size(scale.py(CONTENT_FONT_SIZE))
+                                    .color(RED_CONTRAST_THEME)
+                                    .strong(),
+                            ),
+                        )
+                    })
+                    .inner // Extract the response from the inner Ui
+                    .clicked();
+
+                let enter_pressed = is_focused && ui.input(|i| i.key_pressed(egui::Key::Enter));
+
+                if send_clicked || enter_pressed {
+                    send = true;
+                }
+            });
         });
     send
 }
@@ -287,26 +311,25 @@ fn bubble(ui: &mut egui::Ui, text: &str, is_player: bool, font: &FontId, font_sm
     if text.is_empty() {
         return;
     }
-    let name = if is_player { "you" } else { "anon" };
-    let name_color = if is_player { COLOR_PLAYER } else { COLOR_ANON };
+    ui.separator();
+    let name = if is_player { "operator" } else { "anon" };
+    let name_color = if is_player { LABEL_META } else { CHATBOX_ANON };
     let max_w = ui.available_width() * 0.75;
 
-    let layout = if is_player {
-        egui::Layout::right_to_left(egui::Align::TOP)
+    let alignment = if is_player {
+        egui::Align::Max
     } else {
-        egui::Layout::left_to_right(egui::Align::TOP)
+        egui::Align::Min
     };
 
-    ui.with_layout(layout, |ui| {
-        ui.vertical(|ui| {
-            ui.set_max_width(max_w);
-            ui.label(
-                RichText::new(name)
-                    .font(font_sm.clone())
-                    .color(name_color)
-                    .strong(),
-            );
-            ui.label(RichText::new(text).font(font.clone()).color(COLOR_PLAYER));
-        });
+    ui.with_layout(egui::Layout::top_down(alignment), |ui| {
+        ui.set_max_width(max_w);
+        ui.label(
+            RichText::new(name)
+                .font(font_sm.clone())
+                .color(name_color)
+                .strong(),
+        );
+        ui.label(RichText::new(text).font(font.clone()).color(LABEL_COLOR));
     });
 }

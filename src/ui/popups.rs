@@ -104,7 +104,7 @@ fn on_open_alert(ev: On<OpenAlertEvent>, mut open_alerts: ResMut<OpenAlerts>) {
     });
 }
 
-const LOAD_DURATION: f32 = 10.0;
+const LOAD_DURATION: f32 = 0.5;
 
 fn update_alert_progress(time: Res<Time>, mut open_alerts: ResMut<OpenAlerts>) {
     for entry in open_alerts.alerts.iter_mut() {
