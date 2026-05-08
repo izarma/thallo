@@ -36,7 +36,7 @@ const COMMANDS: &[CommandDef] = &[
     CommandDef {
         name: "unlock",
         args: "<file> <password>",
-        desc: "unlock a password-protected file or folder",
+        desc: "unlock a file or folder",
         handler: cmd_unlock,
     },
     CommandDef {
@@ -50,6 +50,12 @@ const COMMANDS: &[CommandDef] = &[
         args: "",
         desc: "show this message",
         handler: cmd_help,
+    },
+    CommandDef {
+        name: "programs",
+        args: "",
+        desc: "list installed programs",
+        handler: |_, _, _, _| CommandOutput::None, // unreachable; handled in execute_command
     },
 ];
 
@@ -82,6 +88,25 @@ pub fn execute_command(
         "netripper" if state.netripper => return cmd_netripper(arg, cwd, history, vfs, state),
         "netripper" => {
             history.push("st-os: command not found: netripper".into());
+            return CommandOutput::None;
+        }
+        "programs" => {
+            let mut installed = Vec::new();
+            if state.bruteforce {
+                installed.push("  bruteforce   decrypt an encrypted file or folder");
+            }
+            if state.netripper {
+                installed.push("  netripper   transmit data through the spacenet");
+            }
+            if installed.is_empty() {
+                history.push("No programs installed.".into());
+            } else {
+                history.push("Installed programs:".into());
+                history.push("".into());
+                for line in installed {
+                    history.push(line.into());
+                }
+            }
             return CommandOutput::None;
         }
         _ => {}
