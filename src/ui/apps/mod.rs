@@ -5,13 +5,14 @@ use crate::{
     engine::{
         Pause, UiPassSystems,
         design_scale::DesignScale,
+        dialogue_runner::{DialogueRunner, Dialogues},
         file_system::FsHierarchy,
         minigames::{MinigameTrigger, MinigameType},
         screens::{
             Screen,
             desktop::{DesktopTextures, IconTextures},
         },
-        scripted_events::{Dialogues, ScriptedEventTrigger, UnlockState},
+        scripted_events::{ScriptedEventTrigger, UnlockState},
         system_apps::{Applications, OpenAppEvent},
         terminal_commands::{CommandOutput, execute_command},
         window_manager::{OpenWindows, ToggleMinimizeEvent, WindowAction},
@@ -67,6 +68,7 @@ fn show_open_windows(
     mut open_windows: ResMut<OpenWindows>,
     mut vfs: ResMut<FsHierarchy>,
     mut dialogues: ResMut<Dialogues>,
+    mut dialog_runner: ResMut<DialogueRunner>,
     icons: Res<IconTextures>,
     tex: Res<DesktopTextures>,
     scale: Res<DesignScale>,
@@ -181,11 +183,7 @@ fn show_open_windows(
                                 }
                                 WindowAction::None
                             }
-                            Applications::Chatbox {
-                                input,
-                                state,
-                                displayed,
-                            } => {
+                            Applications::Chatbox => {
                                 ui.painter().image(
                                     tex.chatbox,
                                     ui.max_rect(),
@@ -197,16 +195,13 @@ fn show_open_windows(
                                 );
                                 let send = show_chatbox(
                                     ui,
-                                    displayed,
-                                    state,
-                                    input,
+                                    &mut dialog_runner,
                                     &mut dialogues,
-                                    dt,
                                     &scale,
                                     is_focused,
                                 );
                                 if send {
-                                    commit_player_line(displayed, input, state, &mut dialogues);
+                                    commit_player_line(&mut dialog_runner, &mut dialogues);
                                 }
                                 WindowAction::None
                             }

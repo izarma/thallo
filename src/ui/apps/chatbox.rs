@@ -5,7 +5,7 @@ use bevy_egui::egui::{
 use crate::{
     engine::{
         design_scale::DesignScale,
-        scripted_events::{DialogueLine, Dialogues},
+        dialogue_runner::{DialogueLine, DialogueRunner, Dialogues, derive_state},
         system_apps::ChatBoxState,
     },
     ui::theme::palette::{
@@ -33,14 +33,12 @@ const TYPING_SPEED: f32 = 18.0; // chars / second
 
 pub fn show_chatbox(
     ui: &mut egui::Ui,
-    displayed: &mut Vec<DialogueLine>,
-    state: &mut ChatBoxState,
-    input: &mut String,
+    runner: &mut DialogueRunner,
     dialogues: &mut Dialogues,
-    dt: f32,
     scale: &DesignScale,
     is_focused: bool,
 ) -> bool {
+    runner.has_unread = false;
     let total = ui.max_rect();
     let chat_w = total.width() * (1.0 - SIDEBAR_RATIO);
     let header_h = total.height() * HEADER_RATIO;
@@ -55,68 +53,38 @@ pub fn show_chatbox(
         egui::pos2(total.min.x, total.min.y + header_h + msg_h),
         egui::vec2(chat_w, status_h),
     );
-
-    tick(displayed, state, input, dialogues, dt, is_focused, ui.ctx());
-    render_messages(ui, msg_rect, displayed, state, scale);
-    render_status_bar(ui, status_rect, state, input, dialogues, scale, is_focused)
+    handle_player_input(runner, dialogues, ui.ctx(), is_focused);
+    render_messages(ui, msg_rect, &runner.displayed, &runner.state, scale);
+    render_status_bar(ui, status_rect, runner, dialogues, scale, is_focused)
 }
 
 // State machine
 
-fn tick(
-    displayed: &mut Vec<DialogueLine>,
-    state: &mut ChatBoxState,
-    input: &mut String,
-    dialogues: &mut Dialogues,
-    dt: f32,
-    is_focused: bool,
+fn handle_player_input(
+    runner: &mut DialogueRunner,
+    dialogues: &Dialogues,
     ctx: &egui::Context,
+    is_focused: bool,
 ) {
-    match state {
-        // Anon animates his line, then hands off to player (or Done)
-        ChatBoxState::AnonTyping { elapsed } => {
-            let Some(line) = dialogues.lines.get(dialogues.index) else {
-                *state = ChatBoxState::Done;
-                return;
-            };
-            *elapsed += dt;
-            ctx.request_repaint();
-
-            let char_count = line.text.chars().count();
-            if (*elapsed * TYPING_SPEED) as usize >= char_count {
-                displayed.push(DialogueLine::new(false, &line.text));
-                dialogues.index += 1;
-                *state = next_state(&dialogues.lines, dialogues.index);
-                input.clear();
-            }
-        }
-
-        // Each printable keypress reveals one more char of the scripted line
-        ChatBoxState::PlayerReady { chars_revealed } => {
-            if !is_focused {
-                return;
-            }
-            let Some(line) = dialogues.lines.get(dialogues.index) else {
-                return;
-            };
-            let total_chars = line.text.chars().count();
-
-            // Count printable Text events this frame.
-            let new_chars = ctx.input(|i| {
-                i.events
-                    .iter()
-                    .filter(|e| matches!(e, egui::Event::Text(_)))
-                    .count()
-            });
-
-            if new_chars > 0 && *chars_revealed < total_chars {
-                *chars_revealed = (*chars_revealed + new_chars).min(total_chars);
-                // Sync the visible input string.
-                *input = line.text.chars().take(*chars_revealed).collect();
-            }
-        }
-
-        ChatBoxState::Done => {}
+    let ChatBoxState::PlayerReady { chars_revealed } = &mut runner.state else {
+        return;
+    };
+    if !is_focused {
+        return;
+    }
+    let Some(line) = dialogues.lines.get(dialogues.index) else {
+        return;
+    };
+    let total_chars = line.text.chars().count();
+    let new_chars = ctx.input(|i| {
+        i.events
+            .iter()
+            .filter(|e| matches!(e, egui::Event::Text(_)))
+            .count()
+    });
+    if new_chars > 0 && *chars_revealed < total_chars {
+        *chars_revealed = (*chars_revealed + new_chars).min(total_chars);
+        runner.input = line.text.chars().take(*chars_revealed).collect();
     }
 }
 
@@ -199,9 +167,8 @@ fn render_messages(
 fn render_status_bar(
     ui: &mut egui::Ui,
     rect: egui::Rect,
-    state: &mut ChatBoxState,
-    input: &mut String,
-    dialogues: &mut Dialogues,
+    runner: &mut DialogueRunner,
+    dialogues: &Dialogues,
     scale: &DesignScale,
     is_focused: bool,
 ) -> bool {
@@ -223,7 +190,7 @@ fn render_status_bar(
             bottom: (scale.y * STATUS_MARGIN) as i8,
         })
         .show(&mut status_ui, |ui| {
-            match state {
+            match &runner.state {
                 ChatBoxState::AnonTyping { .. } => {
                     ui.label(
                         RichText::new("| Status: Online")
@@ -240,7 +207,7 @@ fn render_status_bar(
                         .map(|l| l.text.chars().count())
                         .unwrap_or(0);
                     ready_to_send = *chars_revealed >= total_chars;
-                    if input.is_empty() {
+                    if runner.input.is_empty() {
                         ui.label(
                             RichText::new("[PRESS ANY KEYS TO TYPE THE RESPONSE]")
                                 .font(font.clone())
@@ -248,7 +215,7 @@ fn render_status_bar(
                         );
                     } else {
                         ui.label(
-                            RichText::new(input.as_str())
+                            RichText::new(runner.input.as_str())
                                 .font(font.clone())
                                 .color(LABEL_COLOR),
                         );
@@ -290,19 +257,15 @@ fn render_status_bar(
     send
 }
 
-/// Called by `show_chatbox` to finalise the player's turn after Send/Enter.
-pub fn commit_player_line(
-    displayed: &mut Vec<DialogueLine>,
-    input: &mut String,
-    state: &mut ChatBoxState,
-    dialogues: &mut Dialogues,
-) {
+/// Finalise the player's turn after Send/Enter.  Updates `runner` and advances
+/// the dialogue index.
+pub fn commit_player_line(runner: &mut DialogueRunner, dialogues: &mut Dialogues) {
     if let Some(line) = dialogues.lines.get(dialogues.index) {
-        displayed.push(DialogueLine::new(true, &line.text));
+        runner.displayed.push(DialogueLine::new(true, &line.text));
     }
-    input.clear();
+    runner.input.clear();
     dialogues.index += 1;
-    *state = next_state(&dialogues.lines, dialogues.index);
+    runner.state = derive_state(&dialogues.lines, dialogues.index);
 }
 
 // Chat bubble
