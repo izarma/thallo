@@ -5,8 +5,7 @@ use crate::engine::{
     audio::sound_effect,
     screens::{Screen, desktop::DesktopAssets},
     scripted_events::{ScriptedEventTrigger, UnlockState},
-    system_apps::{Applications, ChatBoxState},
-    window_manager::OpenWindows,
+    system_apps::ChatBoxState,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -29,8 +28,6 @@ pub struct DialogueRunner {
     pub displayed: Vec<DialogueLine>,
     /// The player's current (partially revealed) typed response.
     pub input: String,
-    /// True when a new message arrived while the chatbox was not visible.
-    pub has_unread: bool, // can probably remove this
 }
 
 impl Default for DialogueRunner {
@@ -39,7 +36,6 @@ impl Default for DialogueRunner {
             state: ChatBoxState::Done,
             displayed: Vec::new(),
             input: String::new(),
-            has_unread: false,
         }
     }
 }
@@ -94,7 +90,6 @@ pub const TYPING_SPEED: f32 = 18.0;
 fn tick_dialogue_runner(
     mut runner: ResMut<DialogueRunner>,
     mut dialogues: ResMut<Dialogues>,
-    open_windows: Res<OpenWindows>,
     time: Res<Time>,
     mut cmd: Commands,
     assets: Option<Res<DesktopAssets>>,
@@ -108,15 +103,13 @@ fn tick_dialogue_runner(
     if matches!(runner.state, ChatBoxState::Done) {
         if dialogues.lines.get(dialogues.index).is_some() {
             runner.state = derive_state(&dialogues.lines, dialogues.index);
+            if matches!(runner.state, ChatBoxState::PlayerReady { .. }) {
+                play_notification_sfx(assets.as_deref(), &mut cmd);
+            }
         } else {
             return;
         }
     }
-
-    let chatbox_visible = open_windows
-        .windows
-        .iter()
-        .any(|w| matches!(w.event.app_type, Applications::Chatbox) && !w.is_minimized);
 
     // AnonTyping tick
     let should_advance = if let ChatBoxState::AnonTyping { elapsed } = &mut runner.state {
@@ -139,22 +132,8 @@ fn tick_dialogue_runner(
         runner.state = derive_state(&dialogues.lines, dialogues.index);
         runner.input.clear();
         play_notification_sfx(assets.as_deref(), &mut cmd);
-        if !chatbox_visible {
-            runner.has_unread = true;
-        }
 
         return;
-    }
-
-    // PlayerReady notification
-    if matches!(
-        runner.state,
-        ChatBoxState::PlayerReady { chars_revealed: 0 }
-    ) {
-        play_notification_sfx(assets.as_deref(), &mut cmd);
-        if !chatbox_visible {
-            runner.has_unread = true;
-        }
     }
 }
 
@@ -163,8 +142,3 @@ fn play_notification_sfx(assets: Option<&DesktopAssets>, cmd: &mut Commands) {
         cmd.spawn(sound_effect(assets.msg_notification.clone()));
     }
 }
-
-// Tests for when player has to type first after a new trigger
-// first test when chatbox is not focused but open - failed | no notification
-// then test when chatbox is minimized - no notification | chatbox just opened
-// then if chatbox is closed, - no notification | chatbox just opened

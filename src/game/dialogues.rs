@@ -9,7 +9,11 @@ use crate::engine::{
 pub(super) fn build_act1_dialogues() -> Dialogues {
     Dialogues {
         lines: vec![
-            DialogueLine::new(false, "Hey, you’re in?"), // false is anon
+            DialogueLine::new(false, "Hey, you’re in?").on_complete(
+                ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(
+                    NewFileReceiving::BruteForce,
+                )),
+            ), // false is anon
             DialogueLine::new(true, "i think so. what are we looking for exactly?"), // true is player
             DialogueLine::new(
                 false,

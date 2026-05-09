@@ -28,9 +28,6 @@ const SIDEBAR_RATIO: f32 = 0.288;
 const SEND_BUTTON_HEIGHT: f32 = 48.0;
 const SEND_BUTTON_WIDTH: f32 = 120.0;
 
-/// Seconds between each character appearing for anon's message.
-const TYPING_SPEED: f32 = 18.0; // chars / second
-
 pub fn show_chatbox(
     ui: &mut egui::Ui,
     runner: &mut DialogueRunner,
@@ -38,7 +35,6 @@ pub fn show_chatbox(
     scale: &DesignScale,
     is_focused: bool,
 ) -> bool {
-    runner.has_unread = false;
     let total = ui.max_rect();
     let chat_w = total.width() * (1.0 - SIDEBAR_RATIO);
     let header_h = total.height() * HEADER_RATIO;
@@ -85,15 +81,6 @@ fn handle_player_input(
     if new_chars > 0 && *chars_revealed < total_chars {
         *chars_revealed = (*chars_revealed + new_chars).min(total_chars);
         runner.input = line.text.chars().take(*chars_revealed).collect();
-    }
-}
-
-/// Advance to the correct state for the line now at `index`.
-fn next_state(lines: &[DialogueLine], index: usize) -> ChatBoxState {
-    match lines.get(index) {
-        Some(line) if !line.speaker => ChatBoxState::AnonTyping { elapsed: 0.0 },
-        Some(_) => ChatBoxState::PlayerReady { chars_revealed: 0 },
-        None => ChatBoxState::Done,
     }
 }
 

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::{
     EguiContexts, EguiPrimaryContextPass,
-    egui::{self, Margin},
+    egui::{self},
 };
 
 use crate::{
