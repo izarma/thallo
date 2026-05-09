@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
+use bevy_egui::{
+    EguiContexts, EguiPrimaryContextPass,
+    egui::{self, Margin},
+};
 
 use crate::{
     engine::{
@@ -109,6 +112,7 @@ fn show_open_windows(
                     egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
                     egui::Color32::WHITE,
                 );
+                ui.interact(bg_rect, entry.id.with("bg"), egui::Sense::click());
                 ui.style_mut().interaction.selectable_labels = false;
                 match title_bar(ui, &entry.event.name, &scale) {
                     TitleBarAction::Minimize => {
@@ -120,7 +124,7 @@ fn show_open_windows(
                     }
                     TitleBarAction::None => {}
                 }
-                egui::Frame::new()
+                egui::Frame::default()
                     .inner_margin(egui::Margin {
                         left: (scale.x * WINDOW_PAD_X) as i8,
                         right: (scale.x * WINDOW_PAD_X) as i8,
@@ -265,6 +269,7 @@ fn show_open_windows(
                         };
                         actions.push((entry.id, action));
                     });
+                ui.allocate_space(ui.available_size());
             });
     }
     for (id, action) in actions {
