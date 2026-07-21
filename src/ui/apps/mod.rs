@@ -114,7 +114,8 @@ fn show_open_windows(
                 );
                 ui.interact(bg_rect, entry.id.with("bg"), egui::Sense::click());
                 ui.style_mut().interaction.selectable_labels = false;
-                match title_bar(ui, &entry.event.name, &scale) {
+                let closable = !matches!(entry.event.app_type, Applications::Chatbox);
+                match title_bar(ui, &entry.event.name, &scale, closable) {
                     TitleBarAction::Minimize => {
                         // Will be picked up next frame by the observer
                         cmd.trigger(ToggleMinimizeEvent { id: entry.id });
