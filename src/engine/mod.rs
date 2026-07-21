@@ -9,11 +9,13 @@ use crate::{
 pub mod asset_tracking;
 pub mod audio;
 pub mod design_scale;
+pub mod dialogue_runner;
 pub mod file_system;
 pub mod minigames;
 pub mod post_processing;
 pub mod screens;
 pub mod scripted_events;
+
 pub mod system_apps;
 pub mod terminal_commands;
 pub mod window_manager;
@@ -36,6 +38,7 @@ pub(super) fn plugin(app: &mut App) {
         screens::plugin,
         design_scale::plugin,
         window_manager::plugin,
+        dialogue_runner::plugin,
         scripted_events::plugin,
         minigames::plugin,
         post_processing::plugin,

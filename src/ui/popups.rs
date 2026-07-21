@@ -7,7 +7,8 @@ use bevy_egui::{
 use crate::{
     engine::{
         CoreSystems, UiPassSystems,
-        screens::Screen,
+        design_scale::DesignScale,
+        screens::{Screen, desktop::DesktopTextures},
         scripted_events::{NewFileReceiving, UnlockState},
         system_apps::{OpenAlertEvent, SystemAlerts},
     },
@@ -35,9 +36,11 @@ fn show_popups(
     mut contexts: EguiContexts,
     mut open_alerts: ResMut<OpenAlerts>,
     mut unlock_state: ResMut<UnlockState>,
+    textures: Res<DesktopTextures>,
+    scale: Res<DesignScale>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
-
+    let texture_id = textures.file_transfer_sheet;
     for entry in open_alerts.alerts.iter_mut() {
         if !entry.is_open {
             continue;
@@ -53,7 +56,7 @@ fn show_popups(
             )
             .show(ctx, |ui| match &entry.alert {
                 SystemAlerts::FileTransfer(download) => {
-                    if render_file_transfer_ui(ui, entry.elapsed, download) {
+                    if render_file_transfer_ui(ui, entry.elapsed, download, texture_id, &scale) {
                         close_requested = true;
                     }
                 }
@@ -104,7 +107,7 @@ fn on_open_alert(ev: On<OpenAlertEvent>, mut open_alerts: ResMut<OpenAlerts>) {
     });
 }
 
-const LOAD_DURATION: f32 = 0.5;
+const LOAD_DURATION: f32 = 2.5;
 
 fn update_alert_progress(time: Res<Time>, mut open_alerts: ResMut<OpenAlerts>) {
     for entry in open_alerts.alerts.iter_mut() {
@@ -116,14 +119,30 @@ fn update_alert_progress(time: Res<Time>, mut open_alerts: ResMut<OpenAlerts>) {
     }
 }
 
-fn render_file_transfer_ui(ui: &mut egui::Ui, elapsed: f32, download: &NewFileReceiving) -> bool {
+fn render_file_transfer_ui(
+    ui: &mut egui::Ui,
+    elapsed: f32,
+    download: &NewFileReceiving,
+    texture: egui::TextureId,
+    scale: &DesignScale,
+) -> bool {
     let progress = (elapsed / LOAD_DURATION).clamp(0.0, 1.0);
     let is_done = progress >= 1.0;
+    // Calculate the current frame based on time
+    let frame_index = ((elapsed * ANIM_FPS) as usize) % SHEET_FRAMES;
+    // Calculate UV coordinates for the current frame (Horizontal Strip)
+    let frame_step = 1.0 / SHEET_FRAMES as f32;
+    let uv_min = egui::pos2(frame_index as f32 * frame_step, 0.0);
+    let uv_max = egui::pos2((frame_index + 1) as f32 * frame_step, 1.0);
+    let uv_rect = egui::Rect::from_min_max(uv_min, uv_max);
     let mut close = false;
 
     ui.vertical_centered(|ui| {
         ui.add_space(10.0);
+        let sprite_size = scale.px(FRAME_DESIGN_W, FRAME_DESIGN_H);
+        ui.add(egui::Image::new(egui::load::SizedTexture::new(texture, sprite_size)).uv(uv_rect));
 
+        ui.add_space(scale.py(10.0));
         // Status Text
         let title = if is_done {
             "TRANSFER COMPLETE".to_string()
@@ -138,7 +157,7 @@ fn render_file_transfer_ui(ui: &mut egui::Ui, elapsed: f32, download: &NewFileRe
         progress_bar(ui, progress, 300.0, 12.0);
 
         if is_done {
-            if ui.button("Ok").clicked() {
+            if ui.button("Finish").clicked() {
                 close = true;
             }
         } else {
@@ -147,3 +166,8 @@ fn render_file_transfer_ui(ui: &mut egui::Ui, elapsed: f32, download: &NewFileRe
     });
     close
 }
+
+const SHEET_FRAMES: usize = 6;
+const FRAME_DESIGN_W: f32 = 512.0;
+const FRAME_DESIGN_H: f32 = 128.0;
+const ANIM_FPS: f32 = 12.0;

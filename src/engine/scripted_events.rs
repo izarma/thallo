@@ -4,10 +4,9 @@ use bevy::prelude::*;
 
 use crate::engine::{
     CoreSystems,
-    audio::sound_effect,
-    screens::{Screen, desktop::DesktopAssets},
+    dialogue_runner::{DialogueLine, DialogueRunner, Dialogues, derive_state},
+    screens::Screen,
     system_apps::{Applications, ChatBoxState, OpenAlertEvent, OpenAppEvent, SystemAlerts},
-    window_manager::OpenWindows,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -18,11 +17,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Desktop), schedule_open_chat);
     app.add_systems(
         Update,
-        (
-            tick_delayed_events,
-            check_dialogue_triggers,
-            notify_chatbox_minimized,
-        )
+        (tick_delayed_events, check_dialogue_triggers)
             .in_set(CoreSystems::Logic)
             .run_if(in_state(Screen::Desktop)),
     );
@@ -62,7 +57,7 @@ pub struct UnlockState {
     pub bruteforce: bool,
     pub netripper: bool,
     pub network_reconnected: bool,
-    pub act: bool, // 2 is true
+    pub act: bool, // true = act 2 | maybe can use bitmask instead to handle game endings
     pub secure_transmitted: bool,
 }
 
@@ -72,10 +67,13 @@ fn on_scripted_event(
     mut cmd: Commands,
     mut triggers: ResMut<FileDialogueTriggers>,
     mut dialogues: ResMut<Dialogues>,
+    mut runner: ResMut<DialogueRunner>,
     mut next_screen: ResMut<NextState<Screen>>,
 ) {
     match ev.clone() {
-        ScriptedEventTrigger::OpenChat => effect_unlock_chat(&mut state, &mut cmd),
+        ScriptedEventTrigger::OpenChat => {
+            effect_open_chat(&mut state, &mut runner, &dialogues, &mut cmd)
+        }
         ScriptedEventTrigger::FileTrigger(name) => {
             effect_file_trigger(name, &mut triggers, &mut dialogues, &mut cmd)
         }
@@ -168,12 +166,21 @@ impl FileDialogueTriggers {
 
 // Trigger Effects
 
-fn effect_unlock_chat(state: &mut UnlockState, cmd: &mut Commands) {
+fn effect_open_chat(
+    state: &mut UnlockState,
+    runner: &mut DialogueRunner,
+    dialogues: &Dialogues,
+    cmd: &mut Commands,
+) {
     if state.chat && !state.act {
         return;
     }
     state.chat = true;
-    info!("[Story] Chat unlocked");
+    debug!("[Story] Chat unlocked");
+    if matches!(runner.state, ChatBoxState::Done) {
+        runner.state = derive_state(&dialogues.lines, dialogues.index);
+    }
+
     cmd.trigger(open_chatbox());
 }
 
@@ -220,14 +227,39 @@ fn effect_reboot(
     }
 }
 
+fn effect_transmit_secure(state: &mut UnlockState, dialogues: &mut Dialogues, cmd: &mut Commands) {
+    if state.secure_transmitted {
+        return;
+    }
+    state.secure_transmitted = true;
+    dialogues.add_lines(vec![
+        DialogueLine::new(false, "It should've reached Earth hopefully"),
+        DialogueLine::new(true, "now what?"),
+        DialogueLine::new(false, "Lets send an SOS, and best we can do is hope. Use the netripper sos command from your terminal"),
+    ]);
+    cmd.trigger(open_chatbox());
+}
+
+fn effect_transmit_sos(dialogues: &mut Dialogues) {
+    info!("[Story] SOS transmitted — ending act");
+    dialogues.add_lines(vec![
+        DialogueLine::new(false, "I guess this is it then."),
+        DialogueLine::new(true, "yeah I geuess it is.")
+            .on_complete(ScriptedEventTrigger::BeginReboot(RebootSequence::ActTrans)),
+    ]);
+}
+
+fn effect_game_over(state: &mut UnlockState, next_screen: &mut NextState<Screen>) {
+    // we will go back to act2 start title here - unlockstate needs to be updated accordinly
+    state.netripper = false;
+    state.secure_transmitted = false;
+    next_screen.set(Screen::ActBreak);
+}
+
 fn open_chatbox() -> OpenAppEvent {
     OpenAppEvent {
         name: "Chat".to_string(),
-        app_type: Applications::Chatbox {
-            input: String::new(),
-            state: ChatBoxState::AnonTyping { elapsed: 0.0 },
-            displayed: Vec::new(),
-        },
+        app_type: Applications::Chatbox,
     }
 }
 
@@ -241,7 +273,7 @@ struct DelayedEvent {
 
 fn schedule_open_chat(mut cmd: Commands) {
     cmd.spawn(DelayedEvent {
-        timer: Timer::from_seconds(1.0, TimerMode::Once), // cahnge to 5 later
+        timer: Timer::from_seconds(10.0, TimerMode::Once), // Chat Unlock Timer
         event: ScriptedEventTrigger::OpenChat,
     });
 }
@@ -276,40 +308,6 @@ fn on_file_opened(ev: On<OpenAppEvent>, mut cmd: Commands) {
 
 // Dialogues
 
-/// `speaker: false` = anon, `speaker: true` = player.
-#[derive(Debug, PartialEq, Clone)]
-pub struct DialogueLine {
-    pub speaker: bool,
-    pub text: String,
-    pub on_complete: Option<ScriptedEventTrigger>,
-}
-
-impl DialogueLine {
-    pub fn new(speaker: bool, text: &str) -> Self {
-        Self {
-            speaker,
-            text: text.to_string(),
-            on_complete: None,
-        }
-    }
-    pub fn on_complete(mut self, event: ScriptedEventTrigger) -> Self {
-        self.on_complete = Some(event);
-        self
-    }
-}
-
-#[derive(Resource)]
-pub struct Dialogues {
-    pub lines: Vec<DialogueLine>,
-    pub index: usize,
-}
-
-impl Dialogues {
-    pub fn add_lines(&mut self, lines: Vec<DialogueLine>) {
-        self.lines.extend(lines);
-    }
-}
-
 fn check_dialogue_triggers(
     dialogues: Res<Dialogues>,
     mut last_index: Local<usize>,
@@ -325,65 +323,4 @@ fn check_dialogue_triggers(
         }
     }
     *last_index = dialogues.index;
-}
-
-fn effect_transmit_secure(state: &mut UnlockState, dialogues: &mut Dialogues, cmd: &mut Commands) {
-    if state.secure_transmitted {
-        return;
-    }
-    state.secure_transmitted = true;
-    dialogues.add_lines(vec![
-        DialogueLine::new(false, "It should've reached Earth hopefully"),
-        DialogueLine::new(true, "now what?"),
-        DialogueLine::new(false, "Lets send an SOS, and best we can do is hope. Use the netripper sos command from your terminal"),
-    ]);
-    cmd.trigger(open_chatbox());
-}
-
-fn effect_transmit_sos(dialogues: &mut Dialogues) {
-    info!("[Story] SOS transmitted — ending act");
-    dialogues.add_lines(vec![
-        DialogueLine::new(false, "I guess this is it then."),
-        DialogueLine::new(true, "yeah I geuess it is.")
-            .on_complete(ScriptedEventTrigger::BeginReboot(RebootSequence::ActTrans)),
-    ]);
-}
-
-fn effect_game_over(state: &mut UnlockState, next_screen: &mut NextState<Screen>) {
-    // we will go back to act2 start title here - unlockstate needs to be updated accordinly
-    state.netripper = false;
-    state.secure_transmitted = false;
-    next_screen.set(Screen::ActBreak);
-}
-
-fn notify_chatbox_minimized(
-    dialogues: Res<Dialogues>,
-    open_windows: Res<OpenWindows>,
-    desktop_assets: Option<Res<DesktopAssets>>,
-    mut last_line_count: Local<usize>,
-    mut cmd: Commands,
-) {
-    let current = dialogues.lines.len();
-    let previous = *last_line_count;
-    *last_line_count = current;
-
-    // No new lines this frame — nothing to do.
-    if current <= previous {
-        return;
-    }
-
-    let Some(assets) = desktop_assets else { return };
-
-    // Fire only when chatbox is already open but minimised.
-    // If it doesn't exist yet, opening it is notification enough.
-    let is_minimized = open_windows
-        .windows
-        .iter()
-        .find(|w| matches!(w.event.app_type, Applications::Chatbox { .. }))
-        .map(|w| w.is_minimized)
-        .unwrap_or(false);
-
-    if is_minimized {
-        cmd.spawn(sound_effect(assets.msg_notification.clone()));
-    }
 }

@@ -1,24 +1,19 @@
-use crate::engine::scripted_events::{
-    ChatTriggerType, DialogueLine, Dialogues, FileDialogueTriggers, FileTriggerOperation,
-    NewFileReceiving, RebootSequence, ScriptedEventTrigger,
+use crate::engine::{
+    dialogue_runner::{DialogueLine, Dialogues},
+    scripted_events::{
+        ChatTriggerType, FileDialogueTriggers, FileTriggerOperation, NewFileReceiving,
+        RebootSequence, ScriptedEventTrigger,
+    },
 };
 
 pub(super) fn build_act1_dialogues() -> Dialogues {
     Dialogues {
         lines: vec![
-            DialogueLine::new(false, "Hey, you’re in?").on_complete(
-                ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(
-                    NewFileReceiving::BruteForce,
-                )),
-            ), // false is anon
+            DialogueLine::new(false, "Hey, you’re in?"), // false is anon
             DialogueLine::new(true, "i think so. what are we looking for exactly?"), // true is player
             DialogueLine::new(
                 false,
                 "Nothing too concrete yet. There are rumors that got to me that this terminal has some encrypted files. I want to look into them.",
-            ).on_complete(
-                ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(
-                    NewFileReceiving::NetRipper,
-                )),
             ),
             DialogueLine::new(true, "isn't this terminal connected to the rest?"),
             DialogueLine::new(
@@ -33,7 +28,7 @@ pub(super) fn build_act1_dialogues() -> Dialogues {
             DialogueLine::new(true, "god i hate plants."),
             DialogueLine::new(
                 false,
-                "No shit, but I still need for you to read through them carefully. I overlooked the desktop and there should be a few encrypted folders. You know whose terminal is this? Can be connected to that.",
+                "No shit, but I still need for you to read through them carefully. I noticed a few locked folders on the desktop. You know whose terminal is this? Can be connected to that.",
             ),
             DialogueLine::new(
                 true,

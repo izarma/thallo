@@ -3,7 +3,7 @@ use bevy_egui::egui::{TextureId, Vec2};
 
 use crate::engine::{
     file_system::{FileType, FsNode, FsPath, LockType},
-    scripted_events::{DialogueLine, NewFileReceiving, ScriptedEventTrigger},
+    scripted_events::{NewFileReceiving, ScriptedEventTrigger},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -44,11 +44,7 @@ pub enum Applications {
         history: Vec<String>,
         input: String,
     },
-    Chatbox {
-        input: String,
-        state: ChatBoxState,
-        displayed: Vec<DialogueLine>, // need to understand this better
-    },
+    Chatbox,
 }
 
 impl Applications {
@@ -61,7 +57,7 @@ impl Applications {
             Applications::Decrypter { .. } => "Encrypted",
             Applications::Ripper { .. } => "NetRipper",
             Applications::Terminal { .. } => "Terminal",
-            Applications::Chatbox { .. } => "Chatbox",
+            Applications::Chatbox => "Chatbox",
         }
     }
 }
@@ -74,7 +70,6 @@ pub struct OpenAppEvent {
 
 impl OpenAppEvent {
     pub fn from_fsnode(node: &FsNode, path: FsPath) -> Self {
-        // why does this function need node and path seperately?
         let app_type = match &node.meta.locked {
             Some(LockType::Password(_)) => Applications::Unlocker {
                 path: path.clone(),

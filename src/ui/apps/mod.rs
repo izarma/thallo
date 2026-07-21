@@ -1,17 +1,21 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
+use bevy_egui::{
+    EguiContexts, EguiPrimaryContextPass,
+    egui::{self},
+};
 
 use crate::{
     engine::{
         Pause, UiPassSystems,
         design_scale::DesignScale,
+        dialogue_runner::{DialogueRunner, Dialogues},
         file_system::FsHierarchy,
         minigames::{MinigameTrigger, MinigameType},
         screens::{
             Screen,
             desktop::{DesktopTextures, IconTextures},
         },
-        scripted_events::{Dialogues, ScriptedEventTrigger, UnlockState},
+        scripted_events::{ScriptedEventTrigger, UnlockState},
         system_apps::{Applications, OpenAppEvent},
         terminal_commands::{CommandOutput, execute_command},
         window_manager::{OpenWindows, ToggleMinimizeEvent, WindowAction},
@@ -67,6 +71,7 @@ fn show_open_windows(
     mut open_windows: ResMut<OpenWindows>,
     mut vfs: ResMut<FsHierarchy>,
     mut dialogues: ResMut<Dialogues>,
+    mut dialog_runner: ResMut<DialogueRunner>,
     icons: Res<IconTextures>,
     tex: Res<DesktopTextures>,
     scale: Res<DesignScale>,
@@ -107,8 +112,10 @@ fn show_open_windows(
                     egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
                     egui::Color32::WHITE,
                 );
+                ui.interact(bg_rect, entry.id.with("bg"), egui::Sense::click());
                 ui.style_mut().interaction.selectable_labels = false;
-                match title_bar(ui, &entry.event.name, &scale) {
+                let closable = !matches!(entry.event.app_type, Applications::Chatbox);
+                match title_bar(ui, &entry.event.name, &scale, closable) {
                     TitleBarAction::Minimize => {
                         // Will be picked up next frame by the observer
                         cmd.trigger(ToggleMinimizeEvent { id: entry.id });
@@ -118,7 +125,7 @@ fn show_open_windows(
                     }
                     TitleBarAction::None => {}
                 }
-                egui::Frame::new()
+                egui::Frame::default()
                     .inner_margin(egui::Margin {
                         left: (scale.x * WINDOW_PAD_X) as i8,
                         right: (scale.x * WINDOW_PAD_X) as i8,
@@ -181,11 +188,7 @@ fn show_open_windows(
                                 }
                                 WindowAction::None
                             }
-                            Applications::Chatbox {
-                                input,
-                                state,
-                                displayed,
-                            } => {
+                            Applications::Chatbox => {
                                 ui.painter().image(
                                     tex.chatbox,
                                     ui.max_rect(),
@@ -197,16 +200,13 @@ fn show_open_windows(
                                 );
                                 let send = show_chatbox(
                                     ui,
-                                    displayed,
-                                    state,
-                                    input,
+                                    &mut dialog_runner,
                                     &mut dialogues,
-                                    dt,
                                     &scale,
                                     is_focused,
                                 );
                                 if send {
-                                    commit_player_line(displayed, input, state, &mut dialogues);
+                                    commit_player_line(&mut dialog_runner, &mut dialogues);
                                 }
                                 WindowAction::None
                             }
@@ -270,6 +270,7 @@ fn show_open_windows(
                         };
                         actions.push((entry.id, action));
                     });
+                ui.allocate_space(ui.available_size());
             });
     }
     for (id, action) in actions {

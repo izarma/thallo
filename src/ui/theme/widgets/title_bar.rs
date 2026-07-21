@@ -10,7 +10,12 @@ pub enum TitleBarAction {
     Close,
 }
 
-pub fn title_bar(ui: &mut egui::Ui, title: &str, scale: &DesignScale) -> TitleBarAction {
+pub fn title_bar(
+    ui: &mut egui::Ui,
+    title: &str,
+    scale: &DesignScale,
+    closable: bool,
+) -> TitleBarAction {
     let mut action = TitleBarAction::None;
     let bar_height = scale.py(40.0);
 
@@ -62,10 +67,10 @@ pub fn title_bar(ui: &mut egui::Ui, title: &str, scale: &DesignScale) -> TitleBa
     let min_rect = egui::Rect::from_center_size(min_center, button_size)
         .round_to_pixels(ui.pixels_per_point());
 
-    if close_button(ui, close_rect, is_active, &scale).clicked() {
+    if close_button(ui, close_rect, is_active, closable, scale).clicked() && closable {
         action = TitleBarAction::Close;
     }
-    if minimize_button(ui, min_rect, is_active, &scale).clicked() {
+    if minimize_button(ui, min_rect, is_active, scale).clicked() {
         action = TitleBarAction::Minimize;
     }
     action
@@ -76,6 +81,7 @@ fn close_button(
     ui: &mut egui::Ui,
     rect: egui::Rect,
     is_active: bool,
+    closable: bool,
     scale: &DesignScale,
 ) -> egui::Response {
     let close_id = ui.auto_id_with("window_close_button");
@@ -93,6 +99,10 @@ fn close_button(
     // Dim the button when the window is inactive (unless hovered over)
     if !is_active && !response.hovered() && !response.clicked() {
         stroke.color = stroke.color.gamma_multiply(0.4);
+    }
+    // Grey out the close cross when closing is disabled, but keep it visible.
+    if !closable {
+        stroke.color = egui::Color32::from_gray(160).gamma_multiply(0.55);
     }
 
     ui.painter()
