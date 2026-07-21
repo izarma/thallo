@@ -20,7 +20,7 @@ jobs:
   # Check formatting.
   format:
     name: Format
-    runs-on: oracle-runner
+    runs-on: bevy0.18
     timeout-minutes: 10
     steps:
       - name: Checkout repository
@@ -32,7 +32,7 @@ jobs:
   # Check documentation.
   docs:
     name: Docs
-    runs-on: oracle-runner
+    runs-on: bevy0.18
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -51,7 +51,7 @@ jobs:
   # Run Clippy lints.
   clippy-lints:
     name: Clippy lints
-    runs-on: oracle-runner
+    runs-on: bevy0.18
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -70,7 +70,7 @@ jobs:
   # Run Bevy lints.
   bevy-lints:
     name: Bevy lints
-    runs-on: oracle-runner
+    runs-on: bevy0.18
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -89,7 +89,7 @@ jobs:
   # Run tests.
   tests:
     name: Tests
-    runs-on: oracle-runner
+    runs-on: bevy0.18
     timeout-minutes: 70
     steps:
       - name: Checkout repository
@@ -111,7 +111,7 @@ jobs:
   # Check that the web build compiles.
   check-web:
     name: Check web
-    runs-on: oracle-runner
+    runs-on: bevy0.18
     timeout-minutes: 20
     steps:
       - name: Checkout repository

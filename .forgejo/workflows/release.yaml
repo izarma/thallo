@@ -51,7 +51,7 @@ env:
 
   # The itch.io project to deploy to in the format `user-name/project-name`.
   # There will be no deployment to itch.io if this is commented out.
-  itch_page: izarma/bevy-cicd-test
+  itch_page: izarma/thallo
 
   # The base filename of the binary in the package produced by this workflow.
   # Applies to Windows, macOS, and Linux releases.
@@ -60,7 +60,7 @@ env:
 
   # The name of the `.zip` or `.dmg` file produced by this workflow.
   # Defaults to `app_binary_name` if commented out.
-  #app_package_name: bevy-cicd-test
+  #app_package_name: thallo
 
   # Before enabling LFS, please take a look at GitHub's documentation for costs and quota limits:
   # <https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-storage-and-bandwidth-usage>
@@ -74,7 +74,7 @@ env:
 jobs:
   # Determine the version number for this workflow.
   get-version:
-    runs-on: oracle-runner
+    runs-on: bevy0.18
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -111,7 +111,7 @@ jobs:
           - platform: linux
             package_ext: .zip
 
-    runs-on: oracle-runner
+    runs-on: bevy0.18
     permissions:
       # Required to create a GitHub release: <https://docs.github.com/en/rest/releases/releases#create-a-release>.
       contents: write
