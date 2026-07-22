@@ -139,7 +139,7 @@ impl FsNode {
                 Ok(())
             }
             Some(LockType::Password(_)) => Err(FsError::WrongPassword),
-            Some(LockType::Encrypted { .. }) => Err(FsError::IsEncrypted),
+            Some(LockType::Encrypted) => Err(FsError::IsEncrypted),
             None => Ok(()), // already open
         }
     }

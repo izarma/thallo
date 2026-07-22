@@ -54,10 +54,10 @@ pub(super) fn inject_secure_folder(vfs: &mut FsHierarchy, omega_tex: TextureId, 
 }
 
 pub(super) fn strip_to_secure(vfs: &mut FsHierarchy) {
-    if let Some(desktop) = vfs.get_node_mut(&FsPath::new(DESKTOP_PATH)) {
-        if let FileType::Folder(children) = &mut desktop.file_type {
-            children.retain(|c| c.name == "[SECURE]");
-        }
+    if let Some(desktop) = vfs.get_node_mut(&FsPath::new(DESKTOP_PATH))
+        && let FileType::Folder(children) = &mut desktop.file_type
+    {
+        children.retain(|c| c.name == "[SECURE]");
     }
 }
 

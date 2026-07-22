@@ -175,7 +175,7 @@ fn show_open_windows(
                                         &cmd_str,
                                         cwd,
                                         history,
-                                        &mut *vfs,
+                                        &mut vfs,
                                         &unlock_state,
                                     );
                                     match cmd_output {
@@ -293,11 +293,11 @@ fn show_open_windows(
             }
 
             WindowAction::GoBack => {
-                if let Applications::FileExplorer { path, .. } = &mut entry.event.app_type {
-                    if let Some(parent) = path.parent() {
-                        entry.event.name = parent.file_name().to_string();
-                        *path = parent;
-                    }
+                if let Applications::FileExplorer { path, .. } = &mut entry.event.app_type
+                    && let Some(parent) = path.parent()
+                {
+                    entry.event.name = parent.file_name().to_string();
+                    *path = parent;
                 }
             }
 

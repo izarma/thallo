@@ -69,14 +69,13 @@ fn show_popups(
         }
     }
     for entry in open_alerts.alerts.iter() {
-        if !entry.is_open {
-            if let SystemAlerts::FileTransfer(download) = &entry.alert {
-                if entry.elapsed >= LOAD_DURATION {
-                    match download {
-                        NewFileReceiving::BruteForce => unlock_state.bruteforce = true,
-                        NewFileReceiving::NetRipper => unlock_state.netripper = true,
-                    }
-                }
+        if !entry.is_open
+            && let SystemAlerts::FileTransfer(download) = &entry.alert
+            && entry.elapsed >= LOAD_DURATION
+        {
+            match download {
+                NewFileReceiving::BruteForce => unlock_state.bruteforce = true,
+                NewFileReceiving::NetRipper => unlock_state.netripper = true,
             }
         }
     }
@@ -111,10 +110,10 @@ const LOAD_DURATION: f32 = 2.5;
 
 fn update_alert_progress(time: Res<Time>, mut open_alerts: ResMut<OpenAlerts>) {
     for entry in open_alerts.alerts.iter_mut() {
-        if let SystemAlerts::FileTransfer(_) = entry.alert {
-            if entry.elapsed < LOAD_DURATION {
-                entry.elapsed += time.delta_secs();
-            }
+        if let SystemAlerts::FileTransfer(_) = entry.alert
+            && entry.elapsed < LOAD_DURATION
+        {
+            entry.elapsed += time.delta_secs();
         }
     }
 }

@@ -15,7 +15,7 @@ pub(crate) fn show_text_viewer(ui: &mut egui::Ui, content: &str, scale: &DesignS
                 })
                 .show(ui, |ui| {
                     ui.style_mut().interaction.selectable_labels = true;
-                    primitives::label(ui, content, &scale)
+                    primitives::label(ui, content, scale)
                 });
         });
 }

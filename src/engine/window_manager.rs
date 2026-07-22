@@ -23,15 +23,14 @@ impl OpenWindows {
     fn open(&mut self, event: OpenAppEvent) {
         // Singleton apps: if already open (even minimized), un-minimize and return.
         let is_singleton = matches!(event.app_type, Applications::Chatbox);
-        if is_singleton {
-            if let Some(existing) = self
+        if is_singleton
+            && let Some(existing) = self
                 .windows
                 .iter_mut()
                 .find(|w| matches!(w.event.app_type, Applications::Chatbox))
-            {
-                existing.is_minimized = false;
-                return;
-            }
+        {
+            existing.is_minimized = false;
+            return;
         }
         self.windows.push(WindowEntry::new(event));
     }
