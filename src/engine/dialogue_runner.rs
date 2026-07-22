@@ -132,8 +132,6 @@ fn tick_dialogue_runner(
         runner.state = derive_state(&dialogues.lines, dialogues.index);
         runner.input.clear();
         play_notification_sfx(assets.as_deref(), &mut cmd);
-
-        return;
     }
 }
 
