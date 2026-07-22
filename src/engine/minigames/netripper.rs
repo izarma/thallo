@@ -28,9 +28,9 @@ pub struct NetNode {
 impl NetNode {
     pub fn current_lines(&self) -> [bool; 4] {
         let mut rotated = [false; 4];
-        for i in 0..4 {
+        for (i, item) in rotated.iter_mut().enumerate() {
             // Clockwise rotation shift
-            rotated[i] = self.lines[(i + 4 - self.rotation as usize) % 4];
+            *item = self.lines[(i + 4 - self.rotation as usize) % 4];
         }
         rotated
     }
@@ -60,9 +60,9 @@ impl NetRipperState {
         }
 
         // 2. Scramble the rotations
-        for y in 0..3 {
-            for x in 0..3 {
-                nodes[y][x].rotation = rng.random_range(0..4);
+        for row in &mut nodes {
+            for node in row.iter_mut() {
+                node.rotation = rng.random_range(0..4);
             }
         }
 
