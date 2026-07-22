@@ -16,10 +16,6 @@ on:
         description: "Build for Linux"
         default: true
         type: boolean
-      build_for_web:
-        description: "Build for web"
-        default: false
-        type: boolean
       upload_to_github:
         description: "Upload to GitHub releases"
         default: true
@@ -101,9 +97,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: web
-            package_ext: .zip
-
           - platform: windows
             binary_ext: .exe
             package_ext: .zip
@@ -142,7 +135,6 @@ jobs:
 
           # Check if building for this platform is enabled.
           echo 'is_platform_enabled=${{
-            (matrix.platform == 'web' && (inputs.build_for_web || (github.event_name == 'push' && env.continuous_deployment_to_itch == 'true'))) ||
             (matrix.platform == 'linux' && (inputs.build_for_linux || (github.event_name == 'push' && env.continuous_deployment_to_itch == 'true'))) ||
             (matrix.platform == 'windows' && (inputs.build_for_windows || (github.event_name == 'push' && env.continuous_deployment_to_itch == 'true')))
           }}' >> "${GITHUB_ENV}"
@@ -156,9 +148,6 @@ jobs:
               ;;
             windows)
               RUST_TARGET="x86_64-pc-windows-gnu"
-              ;;
-            web)
-              RUST_TARGET="wasm32-unknown-unknown"
               ;;
           esac
           echo "rust_target=${RUST_TARGET}" >> "${GITHUB_ENV}"
@@ -198,14 +187,8 @@ jobs:
         if: ${{ env.is_platform_enabled == 'true' }}
         run: rm -rf tmp; mkdir -p tmp/binary '${{ env.app }}'
 
-      - name: Build and add web bundle to app (Web)
-        if: ${{ env.is_platform_enabled == 'true' && matrix.platform == 'web' }}
-        run: |
-          bevy build --locked --release --features='${{ matrix.features }}' --yes web --bundle
-          mv 'target/bevy_web/web-release/${{ env.cargo_build_binary_name }}' '${{ env.app }}'
-
       - name: Configure cross-compilation
-        if: ${{ env.is_platform_enabled == 'true' && matrix.platform != 'web' }}
+        if: ${{ env.is_platform_enabled == 'true' }}
         run: |
           if [ '${{ env.needs_linux_cross }}' = '1' ]; then
             echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc" >> "${GITHUB_ENV}"
@@ -216,16 +199,16 @@ jobs:
             echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc" >> "${GITHUB_ENV}"
           fi
 
-      - name: Build and add binaries to app (non-Web)
-        if: ${{ env.is_platform_enabled == 'true' && matrix.platform != 'web' }}
+      - name: Build and add binaries to app
+        if: ${{ env.is_platform_enabled == 'true' }}
         run: |
           target='${{ env.rust_target }}'
           bevy build --locked --release --target="${target}" --features='${{ matrix.features }}'
           mv target/"${target}"/release/'${{ env.cargo_build_binary_name }}${{ matrix.binary_ext }}' tmp/binary/"${target}"'${{ matrix.binary_ext }}'
           mv tmp/binary/*'${{ matrix.binary_ext }}' '${{ env.app }}/${{ env.app_binary_name }}${{ matrix.binary_ext }}'
 
-      - name: Add assets to app (non-Web)
-        if: ${{ env.is_platform_enabled == 'true' && matrix.platform != 'web' }}
+      - name: Add assets to app
+        if: ${{ env.is_platform_enabled == 'true' }}
         run: cp -R ./'${{ env.assets_path }}' '${{ env.app }}' || true # Ignore error if assets folder does not exist.
 
       - name: Package app
