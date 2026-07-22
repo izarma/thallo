@@ -343,28 +343,27 @@ fn show_settings_egui_window(
     let mut resolution = win.resolution.clone();
     let mut decorations = win.decorations;
     let ctx = contexts.ctx_mut()?;
+    // Scrim at Order::Middle — a strictly lower layer than Foreground.
+    // The settings window and ComboBox popups both live at Foreground, so they
+    // can never be pushed behind the scrim regardless of click order.
     egui::Area::new(egui::Id::new("settings_scrim"))
-        .order(egui::Order::Foreground)
+        .order(egui::Order::Middle)
         .fixed_pos(egui::Pos2::ZERO)
-        .interactable(true)
+        .interactable(false)
         .show(ctx, |ui| {
             let screen = ui.ctx().content_rect();
-            let (rect, _response) = ui.allocate_exact_size(
-                screen.size(),
-                egui::Sense::click_and_drag(), // absorbs all input
-            );
             ui.painter().rect_filled(
-                rect,
+                screen,
                 egui::CornerRadius::ZERO,
                 egui::Color32::from_black_alpha(180),
             );
         });
 
     let mut is_open = state.settings_open;
-    egui::Window::new("Settings")
+    let win_response = egui::Window::new("Settings")
         .open(&mut is_open) // the × button sets this to false
         .resizable(false)
-        .order(egui::Order::TOP)
+        .order(egui::Order::Foreground)
         .collapsible(false)
         .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
         .show(ctx, |ui| {
@@ -378,6 +377,8 @@ fn show_settings_egui_window(
             );
         });
 
+    let _ = win_response;
+
     if win.mode != window_mode {
         win.mode = window_mode;
     }
@@ -388,6 +389,6 @@ fn show_settings_egui_window(
         win.decorations = decorations;
     }
 
-    state.settings_open = is_open; // propagate close from × button
+    state.settings_open = is_open; // propagate close from × button and outside-click
     Ok(())
 }
