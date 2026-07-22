@@ -57,20 +57,17 @@ pub enum MinigameType {
 
 #[derive(Event, Debug, Clone)]
 pub struct MinigameTrigger {
-    pub checkpoint: usize,
     pub game_type: MinigameType,
 }
 
 pub struct Minigame {
     game_type: MinigameType,
-    checkpoint: usize,
     pub brute_force: Option<BruteForceState>,
     pub net_ripper: Option<NetRipperState>,
 }
 
 #[derive(Event, Debug, Clone)]
 pub struct MinigameOutcome {
-    pub checkpoint: usize,
     pub game_type: MinigameType,
     pub success: bool,
 }
@@ -94,7 +91,6 @@ fn on_minigame_trigger(ev: On<MinigameTrigger>, mut state: ResMut<ActiveMinigame
 
         state.0 = Some(Minigame {
             game_type: ev.game_type,
-            checkpoint: ev.checkpoint,
             brute_force,
             net_ripper,
         });
@@ -228,8 +224,4 @@ impl FromWorld for MinigameAssets {
             hack_lose: assets.load("audio/sfx/hack_error.ogg"),
         }
     }
-}
-
-pub(crate) fn find_current_checkpoint(minigame: &Minigame) -> usize {
-    minigame.checkpoint
 }

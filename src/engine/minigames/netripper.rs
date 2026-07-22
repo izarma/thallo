@@ -28,9 +28,9 @@ pub struct NetNode {
 impl NetNode {
     pub fn current_lines(&self) -> [bool; 4] {
         let mut rotated = [false; 4];
-        for i in 0..4 {
+        for (i, item) in rotated.iter_mut().enumerate() {
             // Clockwise rotation shift
-            rotated[i] = self.lines[(i + 4 - self.rotation as usize) % 4];
+            *item = self.lines[(i + 4 - self.rotation as usize) % 4];
         }
         rotated
     }
@@ -60,9 +60,9 @@ impl NetRipperState {
         }
 
         // 2. Scramble the rotations
-        for y in 0..3 {
-            for x in 0..3 {
-                nodes[y][x].rotation = rng.random_range(0..4);
+        for row in &mut nodes {
+            for node in row.iter_mut() {
+                node.rotation = rng.random_range(0..4);
             }
         }
 
@@ -274,7 +274,6 @@ pub(super) fn update_netripper_logic(
         // Already resolved, will be cleared elsewhere (or clear here)
         if state.solved {
             cmd.trigger(MinigameOutcome {
-                checkpoint: minigame.checkpoint,
                 game_type: MinigameType::NetRipper,
                 success: true,
             });
@@ -291,7 +290,6 @@ pub(super) fn update_netripper_logic(
             state.failed = true;
             // Fire outcome event
             cmd.trigger(MinigameOutcome {
-                checkpoint: minigame.checkpoint,
                 game_type: MinigameType::NetRipper,
                 success: false,
             });
@@ -300,7 +298,6 @@ pub(super) fn update_netripper_logic(
     }
     if !clear_active && state.solved {
         cmd.trigger(MinigameOutcome {
-            checkpoint: minigame.checkpoint,
             game_type: MinigameType::NetRipper,
             success: true,
         });

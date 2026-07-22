@@ -339,7 +339,7 @@ fn show_settings_egui_window(
     let Ok(mut win) = primary_window.single_mut() else {
         return Ok(());
     };
-    let mut window_mode = win.mode.clone();
+    let mut window_mode = win.mode;
     let mut resolution = win.resolution.clone();
     let mut decorations = win.decorations;
     let ctx = contexts.ctx_mut()?;

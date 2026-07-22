@@ -128,12 +128,12 @@ fn play_sound_effect_on_keypress(
     interaction_assets: Option<Res<InteractionAssets>>,
     mut commands: Commands,
 ) {
-    if let Some(assets) = interaction_assets {
-        if keys.get_just_pressed().next().is_some() {
-            let mut rng = rand::rng();
-            if let Some(random_key_sfx) = assets.keypress.choose(&mut rng) {
-                commands.spawn(sound_effect(random_key_sfx.clone()));
-            }
+    if let Some(assets) = interaction_assets
+        && keys.get_just_pressed().next().is_some()
+    {
+        let mut rng = rand::rng();
+        if let Some(random_key_sfx) = assets.keypress.choose(&mut rng) {
+            commands.spawn(sound_effect(random_key_sfx.clone()));
         }
     }
 }

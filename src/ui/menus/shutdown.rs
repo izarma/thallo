@@ -25,7 +25,7 @@ fn shutdown_ui(
     timer: Res<ShutdownTimer>,
     scale: Res<DesignScale>,
 ) -> Result {
-    let remaining = (timer.0.remaining_secs().ceil() as u32).max(0);
+    let remaining = timer.0.remaining_secs().ceil() as u32;
     let ctx = contexts.ctx_mut()?;
 
     primitives::centered_panel(ctx, "shutdown_menu", |ui| {

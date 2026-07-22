@@ -20,7 +20,7 @@ const MINIGAME_CHECKPOINTS: &[f32] = &[0.25, 0.50, 0.75];
 
 pub struct DecrypterOutput {
     pub complete: bool,
-    pub triggered_checkpoint: Option<usize>,
+    pub trigger_minigame: bool,
 }
 
 pub(super) fn show_encrypted(
@@ -38,14 +38,14 @@ pub(super) fn show_encrypted(
 
     let progress = (*elapsed / DECRYPT_DURATION).clamp(0.0, 1.0);
 
-    let mut triggered_checkpoint = None;
+    let mut trigger_minigame = false;
 
     // Check each minigame checkpoint — mark triggered and stub the call.
     for (i, &threshold) in MINIGAME_CHECKPOINTS.iter().enumerate() {
         let bit = 1u8 << i;
         if progress >= threshold && (*minigames_triggered & bit) == 0 {
             *minigames_triggered |= bit;
-            triggered_checkpoint = Some(i);
+            trigger_minigame = true;
         }
     }
 
@@ -127,7 +127,7 @@ pub(super) fn show_encrypted(
 
     DecrypterOutput {
         complete: progress >= 1.0,
-        triggered_checkpoint,
+        trigger_minigame,
     }
 }
 

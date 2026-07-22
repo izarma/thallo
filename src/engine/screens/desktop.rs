@@ -148,7 +148,7 @@ impl DesktopTextures {
             Applications::ImageViewer { .. } => self.png_minimized,
             Applications::TextViewer { .. } => self.txt_minimized,
             Applications::Terminal { .. } => self.terminal_minimized,
-            Applications::Chatbox { .. } => self.chat_minimized,
+            Applications::Chatbox => self.chat_minimized,
             Applications::Decrypter { .. }
             | Applications::Ripper { .. }
             | Applications::Unlocker { .. } => self.hack_minimized,

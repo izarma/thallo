@@ -18,7 +18,7 @@ pub(super) fn show_unlocker(ui: &mut egui::Ui, input: &mut String, scale: &Desig
     ui.vertical_centered(|ui| {
         ui.set_max_width(scale.x * 512.0);
         ui.add_space(scale.py(128.0));
-        primitives::header(ui, "This item is Password protected", &scale);
+        primitives::header(ui, "This item is Password protected", scale);
         ui.add_space(scale.py(96.0));
         ui.horizontal(|ui| {
             let input_font = egui::FontId::proportional(scale.py(CONTENT_FONT_SIZE));

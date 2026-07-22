@@ -59,7 +59,7 @@ pub fn show_file_explorer(
         .map(|c| IconGridItem {
             id: path.join(&c.name).to_string(),
             label: c.name.clone(),
-            icon: icon_for_filetype(&c.file_type, &icons, c.meta.locked.is_some()),
+            icon: icon_for_filetype(&c.file_type, icons, c.meta.locked.is_some()),
             is_encrypted: c.meta.locked == Some(LockType::Encrypted),
         })
         .collect();

@@ -75,7 +75,7 @@ impl OpenAppEvent {
                 path: path.clone(),
                 input: String::new(),
             },
-            Some(LockType::Encrypted { .. }) => Applications::Decrypter {
+            Some(LockType::Encrypted) => Applications::Decrypter {
                 path: path.clone(),
                 max_tries: None,
                 elapsed: 0.0,

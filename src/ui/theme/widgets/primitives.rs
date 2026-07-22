@@ -7,14 +7,6 @@ use crate::ui::theme::palette::{
 };
 
 /// Wraps `body` in a vertically-and-horizontally centred [`egui::CentralPanel`]
-///
-/// # Example
-/// ```ignore
-/// widget::centered_panel(ctx, "shutdown_menu", |ui| {
-///     widget::header(ui, "Hello");
-///     if widget::button(ui, "OK").clicked() { … }
-/// });
-/// ```
 pub fn centered_panel(ctx: &egui::Context, id: &str, body: impl FnOnce(&mut egui::Ui)) {
     // consume the CentralPanel so egui doesn't complain about unused space
     egui::CentralPanel::default()
