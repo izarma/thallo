@@ -48,7 +48,6 @@ impl std::fmt::Display for FsPath {
 }
 
 /// File System Types
-
 /// FileType Enum can store a Folder (List of Nodes) or the type of the file
 #[derive(Debug, Clone)]
 pub enum FileType {
@@ -125,7 +124,8 @@ impl FsNode {
             },
         }
     }
-    /// Lock Helpers
+
+    // Lock Helpers
 
     /// Returns true if this node can be entered/read freely
     pub fn is_accessible(&self) -> bool {
@@ -156,7 +156,7 @@ impl FsNode {
         }
     }
 
-    /// Tree Hierarchy Helpers
+    // Tree Hierarchy Helpers
 
     /// Add a child to a Folder node
     pub fn push_child(&mut self, child: FsNode) -> Result<(), FsError> {
@@ -204,7 +204,7 @@ impl FsNode {
 }
 
 impl FsHierarchy {
-    /// Path Traversal
+    // Path Traversal
 
     /// Walk a slash-separated path and return an immutable reference.
     pub fn get_node(&self, path: &FsPath) -> Option<&FsNode> {

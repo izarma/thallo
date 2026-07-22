@@ -128,7 +128,7 @@ pub fn show_icon_grid(
                                     let time = ui.input(|i| i.time) as f32;
 
                                     let hash = |y: f32, t: f32| -> f32 {
-                                        ((y * 12.9898 + t * 78.233).sin() * 43758.5453)
+                                        ((y * 12.9898 + t * 78.233).sin() * 43_758.547)
                                             .fract()
                                             .abs()
                                     };
@@ -234,7 +234,7 @@ pub fn show_icon_grid(
                             }
                         }
 
-                        if !items.is_empty() && items.len() % cols != 0 {
+                        if !items.is_empty() && !items.len().is_multiple_of(cols) {
                             ui.end_row();
                         }
                     });

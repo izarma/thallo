@@ -18,7 +18,7 @@ on:
         type: boolean
       build_for_web:
         description: "Build for web"
-        default: true
+        default: false
         type: boolean
       upload_to_github:
         description: "Upload to GitHub releases"

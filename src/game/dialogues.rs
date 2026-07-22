@@ -54,12 +54,9 @@ pub(super) fn build_act1_file_triggers(file_triggers: &mut FileDialogueTriggers)
         &["incident_report.txt"],
         FileTriggerOperation::Any,
         vec![
-            DialogueLine::new(false, "Hey, might be important."),
+            DialogueLine::new(false, "Hey, this incident report might be important."),
             DialogueLine::new(true, "doesnt seem like it."),
-            DialogueLine::new(
-                false,
-                "Jesus, just take a closer look! It’s his report after all.",
-            ),
+            DialogueLine::new(false, "Jesus, just take a closer look! It’s his after all."),
             DialogueLine::new(true, "okay okay."),
         ],
     );

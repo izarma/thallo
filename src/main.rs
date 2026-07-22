@@ -44,7 +44,7 @@ fn create_window_plugin() -> WindowPlugin {
 }
 
 fn setup_camera(mut commands: Commands) {
-    let main_camera = Camera2d::default();
+    let main_camera = Camera2d;
     let projection = Projection::Orthographic(OrthographicProjection {
         scaling_mode: bevy::camera::ScalingMode::Fixed {
             width: (1280.0),
