@@ -274,7 +274,6 @@ pub(super) fn update_netripper_logic(
         // Already resolved, will be cleared elsewhere (or clear here)
         if state.solved {
             cmd.trigger(MinigameOutcome {
-                checkpoint: minigame.checkpoint,
                 game_type: MinigameType::NetRipper,
                 success: true,
             });
@@ -291,7 +290,6 @@ pub(super) fn update_netripper_logic(
             state.failed = true;
             // Fire outcome event
             cmd.trigger(MinigameOutcome {
-                checkpoint: minigame.checkpoint,
                 game_type: MinigameType::NetRipper,
                 success: false,
             });
@@ -300,7 +298,6 @@ pub(super) fn update_netripper_logic(
     }
     if !clear_active && state.solved {
         cmd.trigger(MinigameOutcome {
-            checkpoint: minigame.checkpoint,
             game_type: MinigameType::NetRipper,
             success: true,
         });

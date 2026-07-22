@@ -224,9 +224,8 @@ fn show_open_windows(
                                     paused.0,
                                     &scale,
                                 );
-                                if let Some(idx) = output.triggered_checkpoint {
+                                if output.trigger_minigame {
                                     cmd.trigger(MinigameTrigger {
-                                        checkpoint: idx,
                                         game_type: MinigameType::BruteForce,
                                     });
                                 }
@@ -255,9 +254,8 @@ fn show_open_windows(
                                     paused.0,
                                     &scale,
                                 );
-                                if let Some(idx) = output.triggered_checkpoint {
+                                if output.trigger_minigame {
                                     cmd.trigger(MinigameTrigger {
-                                        checkpoint: idx,
                                         game_type: MinigameType::NetRipper,
                                     });
                                 }

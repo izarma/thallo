@@ -16,7 +16,7 @@ const TRANSMIT_DURATION: f32 = 12.0;
 
 pub struct NetRipperOutput {
     pub complete: bool,
-    pub triggered_checkpoint: Option<usize>,
+    pub trigger_minigame: bool,
 }
 
 /// Relay labels — flavour text for each minigame checkpoint.
@@ -42,13 +42,13 @@ pub(super) fn show_netripper_transmit(
     }
 
     let progress = (*elapsed / TRANSMIT_DURATION).clamp(0.0, 1.0);
-    let mut triggered_checkpoint = None;
+    let mut trigger_minigame = false;
 
     for (i, &(_, threshold)) in RELAYS.iter().enumerate() {
         let bit = 1u8 << i;
         if progress >= threshold && (*minigames_triggered & bit) == 0 {
             *minigames_triggered |= bit;
-            triggered_checkpoint = Some(i);
+            trigger_minigame = true;
         }
     }
 
@@ -131,7 +131,7 @@ pub(super) fn show_netripper_transmit(
 
     NetRipperOutput {
         complete: progress >= 1.0,
-        triggered_checkpoint,
+        trigger_minigame,
     }
 }
 

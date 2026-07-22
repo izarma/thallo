@@ -1,8 +1,6 @@
 use crate::engine::{
     design_scale::DesignScale,
-    minigames::{
-        ActiveMinigame, MinigameOutcome, MinigameTextures, MinigameType, find_current_checkpoint,
-    },
+    minigames::{ActiveMinigame, MinigameOutcome, MinigameTextures, MinigameType},
 };
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -167,7 +165,6 @@ pub(super) fn update_bruteforce_logic(
             if state.filled_slots.iter().all(|&f| f) {
                 info!("Hacked successfully!");
                 cmd.trigger(MinigameOutcome {
-                    checkpoint: minigame.checkpoint,
                     game_type: MinigameType::BruteForce,
                     success: true,
                 });
@@ -182,9 +179,7 @@ pub(super) fn update_bruteforce_logic(
     } // Check fail condition
     if !clear_active && state.miss_count > MAX_MISSES {
         state.failed = true;
-        let checkpoint = find_current_checkpoint(minigame);
         cmd.trigger(MinigameOutcome {
-            checkpoint,
             game_type: MinigameType::BruteForce,
             success: false,
         });
