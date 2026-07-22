@@ -33,9 +33,11 @@ fn connecting_sunday(mut contexts: EguiContexts, scale: Res<DesignScale>) -> Res
     Ok(())
 }
 
-fn act1_break_ui(mut contexts: EguiContexts) -> Result {
+fn act1_break_ui(mut contexts: EguiContexts, scale: Res<DesignScale>) -> Result {
     let ctx = contexts.ctx_mut()?;
-    primitives::centered_panel(ctx, "act2", |ui| {});
+    primitives::centered_panel(ctx, "act2", |ui| {
+        primitives::header(ui, "The Message", &scale);
+    });
     Ok(())
 }
 
