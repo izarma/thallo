@@ -387,12 +387,10 @@ fn show_settings_egui_window(
                 egui::Color32::WHITE,
             );
             ui.style_mut().interaction.selectable_labels = false;
-            match title_bar(ui, "Settings", &scale, true, false) {
-                TitleBarAction::Close => {
-                    state.settings_open = false;
-                }
-                _ => {}
+            if title_bar(ui, "Settings", &scale, true, false) == TitleBarAction::Close {
+                state.settings_open = false;
             }
+
             egui::Frame::default()
                 .inner_margin(egui::Margin {
                     left: (scale.x * 36.0) as i8,
