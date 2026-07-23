@@ -14,7 +14,9 @@ use crate::{
         window_manager::{OpenWindows, ToggleMinimizeEvent},
     },
     ui::{
-        apps::settings_menu::show_settings_window,
+        apps::{
+            WINDOW_DESIGN_H, WINDOW_DESIGN_W, WINDOW_PAD_BOT, settings_menu::show_settings_window,
+        },
         theme::{
             palette::{DEEP_RED_THEME, SYSTEM_FONT_SIZE},
             widgets::{
@@ -26,6 +28,7 @@ use crate::{
                     GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H, menu_item,
                     taskbar_app_button, taskbar_group_button,
                 },
+                title_bar::{TitleBarAction, title_bar},
             },
         },
     },
@@ -332,6 +335,8 @@ fn show_settings_egui_window(
     mut state: ResMut<TaskBarState>,
     mut global_volume: ResMut<GlobalVolume>,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
+    tex: Res<DesktopTextures>,
+    scale: Res<DesignScale>,
 ) -> Result {
     if !state.settings_open {
         return Ok(());
@@ -343,8 +348,11 @@ fn show_settings_egui_window(
     let mut resolution = win.resolution.clone();
     let mut decorations = win.decorations;
     let ctx = contexts.ctx_mut()?;
+    // Scrim at Order::Middle — a strictly lower layer than Foreground.
+    // The settings window and ComboBox popups both live at Foreground, so they
+    // can never be pushed behind the scrim regardless of click order.
     egui::Area::new(egui::Id::new("settings_scrim"))
-        .order(egui::Order::Foreground)
+        .order(egui::Order::Middle)
         .fixed_pos(egui::Pos2::ZERO)
         .interactable(true)
         .show(ctx, |ui| {
@@ -359,24 +367,51 @@ fn show_settings_egui_window(
                 egui::Color32::from_black_alpha(180),
             );
         });
-
-    let mut is_open = state.settings_open;
-    egui::Window::new("Settings")
-        .open(&mut is_open) // the × button sets this to false
+    let window_frame = egui::Frame::NONE;
+    let window_size = scale.px(WINDOW_DESIGN_W, WINDOW_DESIGN_H);
+    let win_response = egui::Window::new("Settings")
         .resizable(false)
-        .order(egui::Order::TOP)
+        .order(egui::Order::Foreground)
         .collapsible(false)
+        .fade_in(true)
+        .frame(window_frame)
+        .fixed_size(window_size)
         .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+        .title_bar(false)
         .show(ctx, |ui| {
-            ui.set_min_width(280.0);
-            show_settings_window(
-                ui,
-                &mut global_volume,
-                &mut window_mode,
-                &mut resolution,
-                &mut decorations,
+            let bg_rect = ui.max_rect();
+            ui.painter().image(
+                tex.window,
+                bg_rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
             );
+            ui.style_mut().interaction.selectable_labels = false;
+            if title_bar(ui, "Settings", &scale, true, false) == TitleBarAction::Close {
+                state.settings_open = false;
+            }
+
+            egui::Frame::default()
+                .inner_margin(egui::Margin {
+                    left: (scale.x * 36.0) as i8,
+                    right: (scale.x * 36.0) as i8,
+                    top: 0,
+                    bottom: scale.py(WINDOW_PAD_BOT) as i8,
+                })
+                .show(ui, |ui| {
+                    show_settings_window(
+                        ui,
+                        &mut global_volume,
+                        &mut window_mode,
+                        &mut resolution,
+                        &mut decorations,
+                        &scale,
+                    );
+                });
+            ui.allocate_space(ui.available_size());
         });
+
+    let _ = win_response;
 
     if win.mode != window_mode {
         win.mode = window_mode;
@@ -387,7 +422,5 @@ fn show_settings_egui_window(
     if win.decorations != decorations {
         win.decorations = decorations;
     }
-
-    state.settings_open = is_open; // propagate close from × button
     Ok(())
 }

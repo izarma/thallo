@@ -59,10 +59,10 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
-const WINDOW_DESIGN_W: f32 = 1040.0;
-const WINDOW_DESIGN_H: f32 = 718.0;
-const WINDOW_PAD_X: f32 = 6.0;
-const WINDOW_PAD_BOT: f32 = 6.0;
+pub(crate) const WINDOW_DESIGN_W: f32 = 1040.0;
+pub(crate) const WINDOW_DESIGN_H: f32 = 718.0;
+pub(crate) const WINDOW_PAD_X: f32 = 6.0;
+pub(crate) const WINDOW_PAD_BOT: f32 = 6.0;
 
 // Frame should be used better here before fixing further ui stuff
 fn show_open_windows(
@@ -115,7 +115,7 @@ fn show_open_windows(
                 ui.interact(bg_rect, entry.id.with("bg"), egui::Sense::click());
                 ui.style_mut().interaction.selectable_labels = false;
                 let closable = !matches!(entry.event.app_type, Applications::Chatbox);
-                match title_bar(ui, &entry.event.name, &scale, closable) {
+                match title_bar(ui, &entry.event.name, &scale, closable, true) {
                     TitleBarAction::Minimize => {
                         // Will be picked up next frame by the observer
                         cmd.trigger(ToggleMinimizeEvent { id: entry.id });
