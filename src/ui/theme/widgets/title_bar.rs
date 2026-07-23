@@ -15,6 +15,7 @@ pub fn title_bar(
     title: &str,
     scale: &DesignScale,
     closable: bool,
+    minimizable: bool,
 ) -> TitleBarAction {
     let mut action = TitleBarAction::None;
     let bar_height = scale.py(40.0);
@@ -70,7 +71,7 @@ pub fn title_bar(
     if close_button(ui, close_rect, is_active, closable, scale).clicked() && closable {
         action = TitleBarAction::Close;
     }
-    if minimize_button(ui, min_rect, is_active, scale).clicked() {
+    if minimize_button(ui, min_rect, is_active, minimizable, scale).clicked() {
         action = TitleBarAction::Minimize;
     }
     action
@@ -124,6 +125,7 @@ fn minimize_button(
     ui: &mut egui::Ui,
     rect: egui::Rect,
     is_active: bool,
+    minimizable: bool,
     scale: &DesignScale,
 ) -> egui::Response {
     let min_id = ui.auto_id_with("window_minimize_button");
@@ -145,6 +147,11 @@ fn minimize_button(
     }
 
     let y_pos = rect.center().y + scale.uniform() * 2.0;
+
+    // Grey out the close cross when closing is disabled, but keep it visible.
+    if !minimizable {
+        stroke.color = egui::Color32::from_gray(160).gamma_multiply(0.55);
+    }
     ui.painter().line_segment(
         [
             egui::pos2(rect.left(), y_pos),

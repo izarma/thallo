@@ -5,8 +5,10 @@ use bevy::{
 };
 use bevy_egui::egui;
 
+use crate::engine::design_scale::DesignScale;
+
 const MIN_VOLUME: f32 = 0.0;
-const MAX_VOLUME: f32 = 10.0;
+const MAX_VOLUME: f32 = 5.0;
 const RESOLUTIONS: &[(u32, u32, &str)] = &[
     (2560, 1440, "2560×1440"),
     (1920, 1080, "1920×1080"),
@@ -22,45 +24,35 @@ pub fn show_settings_window(
     window_mode: &mut WindowMode,
     resolution: &mut WindowResolution,
     decorations: &mut bool,
+    scale: &DesignScale,
 ) {
-    ui.add_space(12.0);
-    ui.label("Settings");
-    ui.separator();
-    ui.add_space(8.0);
-
-    ui.horizontal(|ui| {
-        ui.label("Master Volume");
-        ui.add_space(12.0);
-
+    let label_size = scale.py(20.0);
+    let heading_size = scale.py(40.0);
+    let space_sm = scale.py(40.0);
+    ui.vertical(|ui| {
+        ui.add_space(space_sm);
+        ui.label(egui::RichText::new("Master Volume").size(heading_size));
+        ui.add_space(space_sm);
         let mut linear = global_volume.volume.to_linear();
-        if ui
-            .add(egui::Slider::new(&mut linear, MIN_VOLUME..=MAX_VOLUME).text("Volume"))
-            .changed()
-        {
+        let slider = egui::Slider::new(&mut linear, MIN_VOLUME..=MAX_VOLUME);
+        if ui.add(slider).changed() {
             global_volume.volume = Volume::Linear(linear);
         }
-    });
-
-    ui.add_space(8.0);
-
-    ui.label("Display Mode");
-
-    ui.horizontal(|ui| {
+        ui.separator();
+        ui.add_space(space_sm);
+        ui.label(egui::RichText::new("Display Mode").size(heading_size));
         ui.radio_value(window_mode, WindowMode::Windowed, "Windowed");
         ui.radio_value(
             window_mode,
             WindowMode::BorderlessFullscreen(MonitorSelection::Current),
             "Fullscreen (Borderless)",
         );
-    });
-    ui.add_space(8.0);
-
-    if *window_mode == WindowMode::Windowed {
-        ui.add_space(8.0);
-        ui.horizontal(|ui| {
-            ui.label("Resolution");
-            ui.add_space(12.0);
-
+        ui.separator();
+        ui.add_space(space_sm);
+        if *window_mode == WindowMode::Windowed {
+            ui.add_space(space_sm);
+            ui.label(egui::RichText::new("Resolution").size(heading_size));
+            ui.add_space(scale.x * 12.0);
             let current_w = resolution.physical_width();
             let current_h = resolution.physical_height();
             let current_label = RESOLUTIONS
@@ -68,8 +60,8 @@ pub fn show_settings_window(
                 .find(|(w, h, _)| *w == current_w && *h == current_h)
                 .map(|(_, _, label)| *label)
                 .unwrap_or("Custom");
-
             egui::ComboBox::from_id_salt("resolution")
+                .width(ui.available_width())
                 .selected_text(current_label)
                 .show_ui(ui, |ui| {
                     for (w, h, label) in RESOLUTIONS {
@@ -79,12 +71,10 @@ pub fn show_settings_window(
                         }
                     }
                 });
-        });
-        ui.add_space(8.0);
-        ui.horizontal(|ui| {
-            ui.checkbox(decorations, "OS Window Decorations");
-        });
-    }
+            ui.add_space(space_sm);
 
-    ui.add_space(8.0);
+            ui.checkbox(decorations, "OS Window Decorations");
+            ui.separator();
+        }
+    });
 }
