@@ -368,7 +368,7 @@ fn show_settings_egui_window(
             );
         });
     let window_frame = egui::Frame::NONE;
-    let window_size = scale.px(WINDOW_DESIGN_W, WINDOW_DESIGN_H);
+    let window_size = scale.px(WINDOW_DESIGN_W / 2.0, WINDOW_DESIGN_H);
     let win_response = egui::Window::new("Settings")
         .resizable(false)
         .order(egui::Order::Foreground)
@@ -380,10 +380,24 @@ fn show_settings_egui_window(
         .title_bar(false)
         .show(ctx, |ui| {
             let bg_rect = ui.max_rect();
+            let left_rect = egui::Rect::from_min_max(
+                bg_rect.min,
+                egui::pos2(bg_rect.center().x, bg_rect.max.y),
+            );
+            let right_rect = egui::Rect::from_min_max(
+                egui::pos2(bg_rect.center().x, bg_rect.min.y),
+                bg_rect.max,
+            );
             ui.painter().image(
                 tex.window,
-                bg_rect,
-                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                left_rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(0.25, 1.0)),
+                egui::Color32::WHITE,
+            );
+            ui.painter().image(
+                tex.window,
+                right_rect,
+                egui::Rect::from_min_max(egui::pos2(0.75, 0.0), egui::pos2(1.0, 1.0)),
                 egui::Color32::WHITE,
             );
             ui.style_mut().interaction.selectable_labels = false;

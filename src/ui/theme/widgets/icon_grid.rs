@@ -120,6 +120,9 @@ pub fn show_icon_grid(
                                 });
 
                                 let resp = ui.add(btn);
+                                // resp.context_menu(|ui| {
+                                //     ui.label("Open");
+                                // });
 
                                 if item.is_encrypted {
                                     let painter = ui.painter();
