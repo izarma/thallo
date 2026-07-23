@@ -26,7 +26,6 @@ pub fn show_settings_window(
     decorations: &mut bool,
     scale: &DesignScale,
 ) {
-    let label_size = scale.py(20.0);
     let heading_size = scale.py(40.0);
     let space_sm = scale.py(40.0);
     ui.vertical(|ui| {
