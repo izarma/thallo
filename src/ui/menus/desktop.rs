@@ -15,8 +15,7 @@ use crate::{
     },
     ui::{
         apps::{
-            WINDOW_DESIGN_H, WINDOW_DESIGN_W, WINDOW_PAD_BOT, WINDOW_PAD_X,
-            settings_menu::show_settings_window,
+            WINDOW_DESIGN_H, WINDOW_DESIGN_W, WINDOW_PAD_BOT, settings_menu::show_settings_window,
         },
         theme::{
             palette::{DEEP_RED_THEME, SYSTEM_FONT_SIZE},

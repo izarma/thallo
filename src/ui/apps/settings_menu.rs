@@ -29,6 +29,32 @@ pub fn show_settings_window(
     let heading_size = scale.py(40.0);
     let space_sm = scale.py(40.0);
     ui.vertical(|ui| {
+        // Scale widget chrome and text to match design resolution
+        {
+            let style = ui.style_mut();
+            let font_size = scale.py(crate::ui::theme::palette::CONTENT_FONT_SIZE);
+            let font = egui::FontId::proportional(font_size);
+            style
+                .text_styles
+                .insert(egui::TextStyle::Body, font.clone());
+            style.text_styles.insert(egui::TextStyle::Button, font);
+            let u = scale.uniform();
+            let s = &mut style.spacing;
+            s.slider_width = u * 200.0;
+            s.interact_size.y = scale.py(28.0);
+            s.icon_width = u * 20.0;
+            s.icon_spacing = u * 6.0;
+            s.combo_height = scale.py(200.0);
+        }
+        {
+            let s = ui.spacing_mut();
+            let u = scale.uniform(); // uniform scale — no distortion
+            s.slider_width = u * 200.0; // design-space slider track width
+            s.interact_size.y = scale.py(28.0); // row height for combos, checkboxes, radios
+            s.icon_width = u * 20.0; // radio/checkbox box size
+            s.icon_spacing = u * 6.0; // gap between box and label
+            s.combo_height = scale.py(200.0); // max dropdown height
+        }
         ui.add_space(space_sm);
         ui.label(egui::RichText::new("Master Volume").size(heading_size));
         ui.add_space(space_sm);
