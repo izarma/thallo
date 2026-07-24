@@ -11,7 +11,7 @@ use crate::{
             desktop::{DesktopAssets, DesktopTextures, IconTextures},
         },
         system_apps::{Applications, OpenAppEvent},
-        window_manager::{OpenWindows, ToggleMinimizeEvent},
+        window_manager::{CloseWindowEvent, OpenWindows, ToggleMinimizeEvent},
     },
     ui::{
         apps::{
@@ -25,8 +25,8 @@ use crate::{
                     show_icon_grid,
                 },
                 task_bar::{
-                    GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H, menu_item,
-                    taskbar_app_button, taskbar_group_button,
+                    GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H,
+                    TaskbarAppAction, menu_item, taskbar_app_button, taskbar_group_button,
                 },
                 title_bar::{TitleBarAction, title_bar},
             },
@@ -270,17 +270,21 @@ fn show_task_bar(
                             for (key, windows, is_active, icon) in &groups {
                                 if windows.len() == 1 {
                                     // Single window — render as a normal tab using its actual name
-                                    if taskbar_app_button(
+                                    match taskbar_app_button(
                                         ui,
                                         &windows[0].name,
                                         *is_active,
                                         *icon,
                                         tab_size,
                                         font_size,
-                                    )
-                                    .clicked()
-                                    {
-                                        cmd.trigger(ToggleMinimizeEvent { id: windows[0].id });
+                                    ) {
+                                        TaskbarAppAction::Clicked => {
+                                            cmd.trigger(ToggleMinimizeEvent { id: windows[0].id });
+                                        }
+                                        TaskbarAppAction::Close => {
+                                            cmd.trigger(CloseWindowEvent { id: windows[0].id });
+                                        }
+                                        TaskbarAppAction::None => {}
                                     }
                                 } else {
                                     // Multiple windows of the same type — render grouped with popup
@@ -297,17 +301,21 @@ fn show_task_bar(
                                 let icon = desktop_tex
                                     .as_deref()
                                     .map(|dt| dt.icon_for_app(&entry.event.app_type));
-                                if taskbar_app_button(
+                                match taskbar_app_button(
                                     ui,
                                     &entry.event.name,
                                     is_active,
                                     icon,
                                     tab_size,
                                     font_size,
-                                )
-                                .clicked()
-                                {
-                                    cmd.trigger(ToggleMinimizeEvent { id: entry.id });
+                                ) {
+                                    TaskbarAppAction::Clicked => {
+                                        cmd.trigger(ToggleMinimizeEvent { id: entry.id });
+                                    }
+                                    TaskbarAppAction::Close => {
+                                        cmd.trigger(CloseWindowEvent { id: entry.id });
+                                    }
+                                    TaskbarAppAction::None => {}
                                 }
                             }
                         }

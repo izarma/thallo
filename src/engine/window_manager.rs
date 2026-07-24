@@ -11,6 +11,7 @@ pub(super) fn plugin(app: &mut App) {
     app.init_resource::<OpenWindows>();
     app.add_observer(handle_open_node_events);
     app.add_observer(handle_toggle_minimize_event);
+    app.add_observer(handle_close_window_event);
 }
 
 #[derive(Resource, Default)]
@@ -86,6 +87,19 @@ fn handle_toggle_minimize_event(
 ) {
     if let Some(entry) = open_windows.windows.iter_mut().find(|w| w.id == event.id) {
         entry.is_minimized = !entry.is_minimized;
+    }
+}
+
+/// Triggered to close a specific window.
+/// `id` must match a [`WindowEntry::id`] in [`OpenWindows`].
+#[derive(Event, Debug, Clone)]
+pub struct CloseWindowEvent {
+    pub id: egui::Id,
+}
+
+fn handle_close_window_event(event: On<CloseWindowEvent>, mut open_windows: ResMut<OpenWindows>) {
+    if let Some(entry) = open_windows.windows.iter_mut().find(|w| w.id == event.id) {
+        entry.is_open = false;
     }
 }
 

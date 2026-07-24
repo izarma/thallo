@@ -17,12 +17,21 @@ const TAB_UV_INACTIVE: egui::Rect =
 const TAB_UV_ACTIVE: egui::Rect =
     egui::Rect::from_min_max(egui::pos2(0.5, 0.0), egui::pos2(1.0, 1.0));
 
+/// Action returned by [`taskbar_app_button`].
+pub enum TaskbarAppAction {
+    None,
+    /// The button was left-clicked (toggle minimize).
+    Clicked,
+    /// "Close" was selected from the context menu.
+    Close,
+}
+
 /// A task-bar button representing an open application window.
 ///
 /// `is_active` true when the window is visible (not minimised).
 /// `tab_size`pass `scale.px(TAB_DESIGN_W, TAB_DESIGN_H)` from the calling system.
 /// `font_size` already scaled with DesignScale
-/// Returns the [`egui::Response`] so the caller can check `.clicked()`.
+/// Returns a [`TaskbarAppAction`] indicating what the user did.
 pub fn taskbar_app_button(
     ui: &mut egui::Ui,
     label: impl Into<String>,
@@ -30,7 +39,8 @@ pub fn taskbar_app_button(
     icon: Option<egui::TextureId>,
     tab_size: egui::Vec2,
     font_size: f32,
-) -> egui::Response {
+) -> TaskbarAppAction {
+    let mut action = TaskbarAppAction::None;
     let label: String = label.into();
     let display = truncate_label(&label, TASKBAR_LABEL_MAX_CHARS);
     let (rect, response) = ui.allocate_exact_size(tab_size, egui::Sense::click());
@@ -64,7 +74,20 @@ pub fn taskbar_app_button(
             BUTTON_BG,
         );
     }
-    response
+
+    if response.clicked() {
+        action = TaskbarAppAction::Clicked;
+    }
+    if label != "Chat" {
+        response.context_menu(|ui| {
+            if ui.button("Close").clicked() {
+                action = TaskbarAppAction::Close;
+                ui.close();
+            }
+        });
+    }
+
+    action
 }
 
 /// A single window entry passed to [`taskbar_group_button`].

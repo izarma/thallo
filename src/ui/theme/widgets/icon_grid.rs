@@ -120,9 +120,12 @@ pub fn show_icon_grid(
                                 });
 
                                 let resp = ui.add(btn);
-                                // resp.context_menu(|ui| {
-                                //     ui.label("Open");
-                                // });
+                                resp.context_menu(|ui| {
+                                    if ui.button("Open").clicked() {
+                                        action = IconGridAction::Opened(item.id.clone());
+                                        ui.close();
+                                    }
+                                });
 
                                 if item.is_encrypted {
                                     let painter = ui.painter();
