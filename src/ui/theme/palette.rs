@@ -29,4 +29,5 @@ pub fn apply_button_theme(ui: &mut egui::Ui) {
     v.widgets.inactive.weak_bg_fill = BUTTON_BG;
     v.widgets.hovered.weak_bg_fill = BUTTON_HOVERED_BG;
     v.widgets.active.weak_bg_fill = BUTTON_ACTIVE_BG;
+    v.selection.bg_fill = DEEP_RED_THEME;
 }

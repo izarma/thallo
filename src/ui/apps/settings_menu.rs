@@ -8,7 +8,7 @@ use bevy_egui::egui;
 use crate::engine::design_scale::DesignScale;
 
 const MIN_VOLUME: f32 = 0.0;
-const MAX_VOLUME: f32 = 5.0;
+const MAX_VOLUME: f32 = 1.0;
 const RESOLUTIONS: &[(u32, u32, &str)] = &[
     (2560, 1440, "2560×1440"),
     (1920, 1080, "1920×1080"),
@@ -58,10 +58,13 @@ pub fn show_settings_window(
         ui.add_space(space_sm);
         ui.label(egui::RichText::new("Master Volume").size(heading_size));
         ui.add_space(space_sm);
-        let mut linear = global_volume.volume.to_linear();
-        let slider = egui::Slider::new(&mut linear, MIN_VOLUME..=MAX_VOLUME);
+        let mut percent_vol = global_volume.volume.to_linear() * 100.0;
+        let slider = egui::Slider::new(&mut percent_vol, MIN_VOLUME..=100.0)
+            .custom_formatter(|n, _| format!("{:.0}%", n))
+            .step_by(1.0);
         if ui.add(slider).changed() {
-            global_volume.volume = Volume::Linear(linear);
+            global_volume.volume =
+                Volume::Linear((percent_vol / 100.0).clamp(MIN_VOLUME, MAX_VOLUME));
         }
         ui.separator();
         ui.add_space(space_sm);

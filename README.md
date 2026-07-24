@@ -27,7 +27,7 @@ Made for [nihil](https://mike-starrow.itch.io/nihil) universe
 ## Features
 
 - Virtual File System
-- Chat Dialogue with even triggers
+- Chat Dialogue with event triggers
 - Interactive Desktop & Windows
 - In-game toy terminal
 - CRT/chromatic abberation shaders

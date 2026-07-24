@@ -8,6 +8,8 @@ use tracing::Level;
 
 use crate::engine::post_processing::PostProcessSettings;
 
+#[cfg(feature = "dev")]
+mod devtools;
 mod engine;
 mod game;
 mod ui;
@@ -26,8 +28,12 @@ fn main() {
     ))
     // this turns into the default background color
     .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
-    .add_systems(Startup, (setup_camera, spawn_cursor))
-    .run();
+    .add_systems(Startup, (setup_camera, spawn_cursor));
+
+    #[cfg(feature = "dev")]
+    app.add_plugins(devtools::plugin);
+
+    app.run();
 }
 
 // Initial Window

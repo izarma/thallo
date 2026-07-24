@@ -11,7 +11,7 @@ use crate::{
             desktop::{DesktopAssets, DesktopTextures, IconTextures},
         },
         system_apps::{Applications, OpenAppEvent},
-        window_manager::{OpenWindows, ToggleMinimizeEvent},
+        window_manager::{CloseWindowEvent, OpenWindows, ToggleMinimizeEvent},
     },
     ui::{
         apps::{
@@ -25,8 +25,8 @@ use crate::{
                     show_icon_grid,
                 },
                 task_bar::{
-                    GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H, menu_item,
-                    taskbar_app_button, taskbar_group_button,
+                    GroupTabAction, GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H,
+                    TaskbarAppAction, menu_item, taskbar_app_button, taskbar_group_button,
                 },
                 title_bar::{TitleBarAction, title_bar},
             },
@@ -71,6 +71,8 @@ fn show_desktop(
             id: item.event.name.clone(),
             label: item.event.name.clone(),
             icon: icon_for_filetype(&item.file_type, &icons, item.is_locked),
+            is_folder: matches!(item.file_type, FileType::Folder(_)),
+            is_locked: item.is_locked,
             is_encrypted: item.is_encrypted,
         })
         .collect();
@@ -102,6 +104,20 @@ fn show_desktop(
                 IconGridAction::Opened(id) => {
                     if let Some(event) = cache.iter().find(|e| e.event.name == id) {
                         cmd.trigger(event.event.clone());
+                    }
+                }
+                IconGridAction::OpenTerminal(id) => {
+                    if let Some(item) = cache.iter().find(|e| e.event.name == id)
+                        && let Applications::FileExplorer { path, .. } = &item.event.app_type
+                    {
+                        cmd.trigger(OpenAppEvent {
+                            name: "Terminal".to_string(),
+                            app_type: Applications::Terminal {
+                                cwd: path.clone(),
+                                history: Vec::new(),
+                                input: String::new(),
+                            },
+                        });
                     }
                 }
                 IconGridAction::None => {}
@@ -230,6 +246,19 @@ fn show_task_bar(
                             });
 
                         // Window tabs (grouped or flat)
+                        let handle_app_action =
+                            |cmd: &mut Commands, action: TaskbarAppAction, id: egui::Id| {
+                                match action {
+                                    TaskbarAppAction::Clicked => {
+                                        cmd.trigger(ToggleMinimizeEvent { id });
+                                    }
+                                    TaskbarAppAction::Close => {
+                                        cmd.trigger(CloseWindowEvent { id });
+                                    }
+                                    TaskbarAppAction::None => {}
+                                }
+                            };
+
                         let total = open_windows.windows.len();
                         if total > MAX_UNGROUPED_WINDOWS {
                             let mut groups: Vec<(
@@ -270,24 +299,35 @@ fn show_task_bar(
                             for (key, windows, is_active, icon) in &groups {
                                 if windows.len() == 1 {
                                     // Single window — render as a normal tab using its actual name
-                                    if taskbar_app_button(
-                                        ui,
-                                        &windows[0].name,
-                                        *is_active,
-                                        *icon,
-                                        tab_size,
-                                        font_size,
-                                    )
-                                    .clicked()
-                                    {
-                                        cmd.trigger(ToggleMinimizeEvent { id: windows[0].id });
-                                    }
+                                    handle_app_action(
+                                        &mut cmd,
+                                        taskbar_app_button(
+                                            ui,
+                                            &windows[0].name,
+                                            *is_active,
+                                            *icon,
+                                            tab_size,
+                                            font_size,
+                                        ),
+                                        windows[0].id,
+                                    );
                                 } else {
                                     // Multiple windows of the same type — render grouped with popup
-                                    if let Some(window_id) = taskbar_group_button(
+                                    match taskbar_group_button(
                                         ui, *key, *is_active, *icon, tab_size, windows, font_size,
                                     ) {
-                                        cmd.trigger(ToggleMinimizeEvent { id: window_id });
+                                        GroupTabAction::Selected(window_id) => {
+                                            cmd.trigger(ToggleMinimizeEvent { id: window_id });
+                                        }
+                                        GroupTabAction::Close(window_id) => {
+                                            cmd.trigger(CloseWindowEvent { id: window_id });
+                                        }
+                                        GroupTabAction::CloseAll => {
+                                            for win in windows {
+                                                cmd.trigger(CloseWindowEvent { id: win.id });
+                                            }
+                                        }
+                                        GroupTabAction::None => {}
                                     }
                                 }
                             }
@@ -297,18 +337,18 @@ fn show_task_bar(
                                 let icon = desktop_tex
                                     .as_deref()
                                     .map(|dt| dt.icon_for_app(&entry.event.app_type));
-                                if taskbar_app_button(
-                                    ui,
-                                    &entry.event.name,
-                                    is_active,
-                                    icon,
-                                    tab_size,
-                                    font_size,
-                                )
-                                .clicked()
-                                {
-                                    cmd.trigger(ToggleMinimizeEvent { id: entry.id });
-                                }
+                                handle_app_action(
+                                    &mut cmd,
+                                    taskbar_app_button(
+                                        ui,
+                                        &entry.event.name,
+                                        is_active,
+                                        icon,
+                                        tab_size,
+                                        font_size,
+                                    ),
+                                    entry.id,
+                                );
                             }
                         }
 
@@ -368,7 +408,7 @@ fn show_settings_egui_window(
             );
         });
     let window_frame = egui::Frame::NONE;
-    let window_size = scale.px(WINDOW_DESIGN_W, WINDOW_DESIGN_H);
+    let window_size = scale.px(WINDOW_DESIGN_W / 2.0, WINDOW_DESIGN_H);
     let win_response = egui::Window::new("Settings")
         .resizable(false)
         .order(egui::Order::Foreground)
@@ -380,10 +420,24 @@ fn show_settings_egui_window(
         .title_bar(false)
         .show(ctx, |ui| {
             let bg_rect = ui.max_rect();
+            let left_rect = egui::Rect::from_min_max(
+                bg_rect.min,
+                egui::pos2(bg_rect.center().x, bg_rect.max.y),
+            );
+            let right_rect = egui::Rect::from_min_max(
+                egui::pos2(bg_rect.center().x, bg_rect.min.y),
+                bg_rect.max,
+            );
             ui.painter().image(
                 tex.window,
-                bg_rect,
-                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                left_rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(0.25, 1.0)),
+                egui::Color32::WHITE,
+            );
+            ui.painter().image(
+                tex.window,
+                right_rect,
+                egui::Rect::from_min_max(egui::pos2(0.75, 0.0), egui::pos2(1.0, 1.0)),
                 egui::Color32::WHITE,
             );
             ui.style_mut().interaction.selectable_labels = false;
