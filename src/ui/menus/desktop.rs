@@ -25,7 +25,7 @@ use crate::{
                     show_icon_grid,
                 },
                 task_bar::{
-                    GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H,
+                    GroupTabAction, GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H,
                     TaskbarAppAction, menu_item, taskbar_app_button, taskbar_group_button,
                 },
                 title_bar::{TitleBarAction, title_bar},
@@ -230,6 +230,19 @@ fn show_task_bar(
                             });
 
                         // Window tabs (grouped or flat)
+                        let handle_app_action =
+                            |cmd: &mut Commands, action: TaskbarAppAction, id: egui::Id| {
+                                match action {
+                                    TaskbarAppAction::Clicked => {
+                                        cmd.trigger(ToggleMinimizeEvent { id });
+                                    }
+                                    TaskbarAppAction::Close => {
+                                        cmd.trigger(CloseWindowEvent { id });
+                                    }
+                                    TaskbarAppAction::None => {}
+                                }
+                            };
+
                         let total = open_windows.windows.len();
                         if total > MAX_UNGROUPED_WINDOWS {
                             let mut groups: Vec<(
@@ -270,28 +283,35 @@ fn show_task_bar(
                             for (key, windows, is_active, icon) in &groups {
                                 if windows.len() == 1 {
                                     // Single window — render as a normal tab using its actual name
-                                    match taskbar_app_button(
-                                        ui,
-                                        &windows[0].name,
-                                        *is_active,
-                                        *icon,
-                                        tab_size,
-                                        font_size,
-                                    ) {
-                                        TaskbarAppAction::Clicked => {
-                                            cmd.trigger(ToggleMinimizeEvent { id: windows[0].id });
-                                        }
-                                        TaskbarAppAction::Close => {
-                                            cmd.trigger(CloseWindowEvent { id: windows[0].id });
-                                        }
-                                        TaskbarAppAction::None => {}
-                                    }
+                                    handle_app_action(
+                                        &mut cmd,
+                                        taskbar_app_button(
+                                            ui,
+                                            &windows[0].name,
+                                            *is_active,
+                                            *icon,
+                                            tab_size,
+                                            font_size,
+                                        ),
+                                        windows[0].id,
+                                    );
                                 } else {
                                     // Multiple windows of the same type — render grouped with popup
-                                    if let Some(window_id) = taskbar_group_button(
+                                    match taskbar_group_button(
                                         ui, *key, *is_active, *icon, tab_size, windows, font_size,
                                     ) {
-                                        cmd.trigger(ToggleMinimizeEvent { id: window_id });
+                                        GroupTabAction::Selected(window_id) => {
+                                            cmd.trigger(ToggleMinimizeEvent { id: window_id });
+                                        }
+                                        GroupTabAction::Close(window_id) => {
+                                            cmd.trigger(CloseWindowEvent { id: window_id });
+                                        }
+                                        GroupTabAction::CloseAll => {
+                                            for win in windows {
+                                                cmd.trigger(CloseWindowEvent { id: win.id });
+                                            }
+                                        }
+                                        GroupTabAction::None => {}
                                     }
                                 }
                             }
@@ -301,22 +321,18 @@ fn show_task_bar(
                                 let icon = desktop_tex
                                     .as_deref()
                                     .map(|dt| dt.icon_for_app(&entry.event.app_type));
-                                match taskbar_app_button(
-                                    ui,
-                                    &entry.event.name,
-                                    is_active,
-                                    icon,
-                                    tab_size,
-                                    font_size,
-                                ) {
-                                    TaskbarAppAction::Clicked => {
-                                        cmd.trigger(ToggleMinimizeEvent { id: entry.id });
-                                    }
-                                    TaskbarAppAction::Close => {
-                                        cmd.trigger(CloseWindowEvent { id: entry.id });
-                                    }
-                                    TaskbarAppAction::None => {}
-                                }
+                                handle_app_action(
+                                    &mut cmd,
+                                    taskbar_app_button(
+                                        ui,
+                                        &entry.event.name,
+                                        is_active,
+                                        icon,
+                                        tab_size,
+                                        font_size,
+                                    ),
+                                    entry.id,
+                                );
                             }
                         }
 
