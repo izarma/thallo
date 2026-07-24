@@ -5,7 +5,7 @@ use crate::{
         design_scale::DesignScale,
         file_system::{FileType, FsHierarchy, FsPath, LockType},
         screens::desktop::IconTextures,
-        system_apps::OpenAppEvent,
+        system_apps::{Applications, OpenAppEvent},
         window_manager::WindowAction,
     },
     ui::theme::widgets::{
@@ -35,9 +35,26 @@ pub fn show_file_explorer(
     }
     ui.separator();
 
+    // Right-click context menu on the explorer background.
+    let bg_rect = ui.available_rect_before_wrap();
+    let bg_response = ui.interact(bg_rect, ui.id().with("explorer_bg"), egui::Sense::click());
+    bg_response.context_menu(|ui| {
+        if ui.button("Open Terminal Here").clicked() {
+            action = WindowAction::OpenNode(OpenAppEvent {
+                name: "Terminal".to_string(),
+                app_type: Applications::Terminal {
+                    cwd: path.clone(),
+                    history: Vec::new(),
+                    input: String::new(),
+                },
+            });
+            ui.close();
+        }
+    });
+
     let Some(node) = vfs.get_node(path) else {
         empty_state(ui, "Folder not found.");
-        return WindowAction::None;
+        return action;
     };
     let children: Vec<_> = match &node.file_type {
         FileType::Folder(children) => children.iter().collect(),
@@ -48,7 +65,7 @@ pub fn show_file_explorer(
     };
     if children.is_empty() {
         empty_state(ui, "(empty)");
-        return WindowAction::None;
+        return action;
     }
 
     let mut sorted = children.clone();
