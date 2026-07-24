@@ -14,6 +14,10 @@ pub(super) fn plugin(app: &mut App) {
     app.add_observer(handle_close_window_event);
 }
 
+/// Maximum number of open windows allowed for a single taskbar group.
+/// When this cap is exceeded, the oldest windows of that group are closed.
+const MAX_WINDOWS_PER_GROUP: usize = 25;
+
 #[derive(Resource, Default)]
 pub struct OpenWindows {
     pub windows: Vec<WindowEntry>,
@@ -33,7 +37,26 @@ impl OpenWindows {
             existing.is_minimized = false;
             return;
         }
+        // Enforce the per-group cap, closing the oldest windows first.
+        let type_name = event.app_type.type_name();
+
         self.windows.push(WindowEntry::new(event));
+        let group_count = self
+            .windows
+            .iter()
+            .filter(|w| w.event.app_type.type_name() == type_name)
+            .count();
+        if group_count > MAX_WINDOWS_PER_GROUP {
+            let mut to_close = group_count - MAX_WINDOWS_PER_GROUP;
+            self.windows.retain(|w| {
+                if to_close == 0 || w.event.app_type.type_name() != type_name {
+                    true
+                } else {
+                    to_close -= 1;
+                    false
+                }
+            });
+        }
     }
 }
 
