@@ -31,6 +31,8 @@ pub struct IconGridItem {
     pub id: String,
     pub label: String,
     pub icon: IconRef,
+    pub is_folder: bool,
+    pub is_locked: bool,
     pub is_encrypted: bool,
 }
 
@@ -39,6 +41,7 @@ pub enum IconGridAction {
     None,
     Selected(String),
     Opened(String),
+    OpenTerminal(String),
 }
 
 #[derive(Clone, Copy)]
@@ -121,9 +124,17 @@ pub fn show_icon_grid(
 
                                 let resp = ui.add(btn);
                                 resp.context_menu(|ui| {
-                                    if ui.button("Open").clicked() {
+                                    if ui.button("Open          ").clicked() {
                                         action = IconGridAction::Opened(item.id.clone());
                                         ui.close();
+                                    }
+
+                                    if item.is_folder && !item.is_locked && !item.is_encrypted {
+                                        ui.separator();
+                                        if ui.button("Open in Terminal").clicked() {
+                                            action = IconGridAction::OpenTerminal(item.id.clone());
+                                            ui.close();
+                                        }
                                     }
                                 });
 

@@ -71,6 +71,8 @@ fn show_desktop(
             id: item.event.name.clone(),
             label: item.event.name.clone(),
             icon: icon_for_filetype(&item.file_type, &icons, item.is_locked),
+            is_folder: matches!(item.file_type, FileType::Folder(_)),
+            is_locked: item.is_locked,
             is_encrypted: item.is_encrypted,
         })
         .collect();
@@ -102,6 +104,20 @@ fn show_desktop(
                 IconGridAction::Opened(id) => {
                     if let Some(event) = cache.iter().find(|e| e.event.name == id) {
                         cmd.trigger(event.event.clone());
+                    }
+                }
+                IconGridAction::OpenTerminal(id) => {
+                    if let Some(item) = cache.iter().find(|e| e.event.name == id)
+                        && let Applications::FileExplorer { path, .. } = &item.event.app_type
+                    {
+                        cmd.trigger(OpenAppEvent {
+                            name: "Terminal".to_string(),
+                            app_type: Applications::Terminal {
+                                cwd: path.clone(),
+                                history: Vec::new(),
+                                input: String::new(),
+                            },
+                        });
                     }
                 }
                 IconGridAction::None => {}

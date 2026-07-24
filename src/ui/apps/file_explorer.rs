@@ -77,6 +77,8 @@ pub fn show_file_explorer(
             id: path.join(&c.name).to_string(),
             label: c.name.clone(),
             icon: icon_for_filetype(&c.file_type, icons, c.meta.locked.is_some()),
+            is_folder: matches!(c.file_type, FileType::Folder(_)),
+            is_locked: c.meta.locked.is_some(),
             is_encrypted: c.meta.locked == Some(LockType::Encrypted),
         })
         .collect();
@@ -104,6 +106,19 @@ pub fn show_file_explorer(
                 } else {
                     action = WindowAction::OpenNode(OpenAppEvent::from_fsnode(child, child_path));
                 }
+            }
+        }
+        IconGridAction::OpenTerminal(id) => {
+            if let Some(child) = sorted.iter().find(|c| path.join(&c.name).to_string() == id) {
+                let child_path = path.join(&child.name);
+                action = WindowAction::OpenNode(OpenAppEvent {
+                    name: "Terminal".to_string(),
+                    app_type: Applications::Terminal {
+                        cwd: child_path,
+                        history: Vec::new(),
+                        input: String::new(),
+                    },
+                });
             }
         }
         IconGridAction::None => {}

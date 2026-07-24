@@ -80,7 +80,7 @@ pub fn taskbar_app_button(
     }
     if label != "Chat" {
         response.context_menu(|ui| {
-            if ui.button("Close").clicked() {
+            if ui.button("Close          ").clicked() {
                 action = TaskbarAppAction::Close;
                 ui.close();
             }
@@ -194,7 +194,7 @@ pub fn taskbar_group_button(
 
     // Right-click: context menu with bulk actions.
     response.context_menu(|ui| {
-        if ui.button("Close All").clicked() {
+        if ui.button("Close All   ").clicked() {
             action = GroupTabAction::CloseAll;
             ui.close();
         }
