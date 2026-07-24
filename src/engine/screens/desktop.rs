@@ -62,6 +62,8 @@ pub struct DesktopAssets {
     pub msg_notification: Handle<AudioSource>,
     #[dependency]
     pub file_transfer_sheet: Handle<Image>,
+    #[dependency]
+    pub error_popup: Handle<Image>,
 }
 
 #[derive(Resource, Asset, Clone, Reflect)]
@@ -102,6 +104,7 @@ impl FromWorld for DesktopAssets {
             start_btn: assets.load("ui/start_button.png"),
             msg_notification: assets.load("audio/sfx/notification.ogg"),
             file_transfer_sheet: assets.load("ui/file_transmition_sheet.png"),
+            error_popup: assets.load("ui/error.png"),
         }
     }
 }
@@ -138,6 +141,7 @@ pub struct DesktopTextures {
     pub terminal: egui::TextureId,
     pub chatbox: egui::TextureId,
     pub file_transfer_sheet: egui::TextureId,
+    pub error_popup: egui::TextureId,
 }
 
 impl DesktopTextures {
@@ -186,6 +190,7 @@ fn cache_desktop_textures(
         chatbox: contexts.add_image(EguiTextureHandle::Weak(w_ass.chatbox.id())),
         file_transfer_sheet: contexts
             .add_image(EguiTextureHandle::Weak(d_ass.file_transfer_sheet.id())),
+        error_popup: contexts.add_image(EguiTextureHandle::Weak(d_ass.error_popup.id())),
     };
     cmd.insert_resource(textures);
     info!("Desktop cached");
