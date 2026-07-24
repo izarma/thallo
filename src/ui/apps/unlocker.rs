@@ -1,4 +1,4 @@
-use bevy_egui::egui;
+use bevy_egui::{EguiClipboard, egui};
 
 use crate::{
     engine::design_scale::DesignScale,
@@ -8,7 +8,12 @@ use crate::{
     },
 };
 
-pub(super) fn show_unlocker(ui: &mut egui::Ui, input: &mut String, scale: &DesignScale) -> bool {
+pub(super) fn show_unlocker(
+    ui: &mut egui::Ui,
+    input: &mut String,
+    scale: &DesignScale,
+    clipboard: &mut EguiClipboard,
+) -> bool {
     let mut submitted = false;
     // Egui state tracking for wrong password feedback.
     // If unlock succeeds, the window app_type changes so this UI never redraws.
@@ -37,6 +42,14 @@ pub(super) fn show_unlocker(ui: &mut egui::Ui, input: &mut String, scale: &Desig
                 ))
                 .desired_width(scale.x * 180.0);
             let response = ui.add(field);
+            response.context_menu(|ui| {
+                if ui.button("Paste").clicked() {
+                    if let Some(text) = clipboard.get_text() {
+                        *input = text;
+                    }
+                    ui.close();
+                }
+            });
             if response.changed() {
                 failed = false;
                 ui.data_mut(|d| d.insert_temp(failed_id, false));

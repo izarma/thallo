@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    EguiContexts, EguiPrimaryContextPass,
+    EguiClipboard, EguiContexts, EguiPrimaryContextPass,
     egui::{self},
 };
 
@@ -78,6 +78,7 @@ fn show_open_windows(
     time: Res<Time>,
     paused: Res<State<Pause>>,
     unlock_state: Res<UnlockState>,
+    mut clipboard: ResMut<EguiClipboard>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
     let top_layer_window_id = ctx.memory(|mem| {
@@ -147,7 +148,7 @@ fn show_open_windows(
                                 WindowAction::None
                             }
                             Applications::Unlocker { path, input } => {
-                                if show_unlocker(ui, input, &scale) {
+                                if show_unlocker(ui, input, &scale, &mut clipboard) {
                                     WindowAction::UnlockAttempt { path: path.clone() } // is this alright?
                                 } else {
                                     WindowAction::None
