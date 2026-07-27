@@ -643,6 +643,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_common_assets"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "481157b530915653dc6c6ba2799f4285d5cda25b9819ff6dd3c02181d18136fc"
+dependencies = [
+ "anyhow",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_reflect",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "bevy_core_pipeline"
 version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5114,10 +5129,13 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "bevy_common_assets",
  "bevy_egui",
  "chrono",
  "log",
  "rand",
+ "serde",
+ "serde_json",
  "tracing",
  "uuid",
  "vleue_kinetoscope",

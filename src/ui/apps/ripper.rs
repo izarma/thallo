@@ -2,7 +2,10 @@ use bevy::prelude::*;
 use bevy_egui::egui::{self};
 
 use crate::{
-    engine::design_scale::DesignScale,
+    engine::{
+        ascii_animation::{AsciiAnimation, render_ascii_animation},
+        design_scale::DesignScale,
+    },
     ui::theme::{
         palette::{
             COLOR_DONE, CONTENT_FONT_SIZE, FONT_SMALL, HEADER_COLOR, HEADING_FONT_SIZE,
@@ -35,6 +38,7 @@ pub(super) fn show_netripper_transmit(
     dt: f32,
     paused: bool,
     scale: &DesignScale,
+    animation: Option<&AsciiAnimation>,
 ) -> NetRipperOutput {
     if !paused && *elapsed < TRANSMIT_DURATION {
         *elapsed = (*elapsed + dt).min(TRANSMIT_DURATION);
@@ -48,86 +52,104 @@ pub(super) fn show_netripper_transmit(
         let bit = 1u8 << i;
         if progress >= threshold && (*minigames_triggered & bit) == 0 {
             *minigames_triggered |= bit;
-            trigger_minigame = true;
+            trigger_minigame = true; // Disable to turn off minigames
         }
     }
 
     // UI
 
-    ui.vertical_centered(|ui| {
-        ui.add_space(scale.py(36.0));
+    // ASCII background overlay (drawn first so content appears on top).
+    if let Some(anim) = animation {
+        render_ascii_animation(ui, scale, anim, *elapsed);
+    }
+    ui.add_space(scale.py(80.0));
+    egui::Frame::NONE
+        .outer_margin(egui::Margin {
+            left: 40,
+            right: 40,
+            top: 40,
+            bottom: 40,
+        })
+        .fill(egui::Color32::from_black_alpha(230))
+        .show(ui, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.add_space(scale.py(36.0));
 
-        // Title
-        ui.label(
-            egui::RichText::new(if progress < 1.0 {
-                "TRANSMITTING VIA NETRIPPER"
-            } else {
-                "TRANSMISSION COMPLETE"
-            })
-            .size(scale.py(HEADING_FONT_SIZE))
-            .color(HEADER_COLOR)
-            .strong(),
-        );
+                // Title
+                ui.label(
+                    egui::RichText::new(if progress < 1.0 {
+                        "TRANSMITTING VIA NETRIPPER"
+                    } else {
+                        "TRANSMISSION COMPLETE"
+                    })
+                    .size(scale.py(HEADING_FONT_SIZE))
+                    .color(HEADER_COLOR)
+                    .strong(),
+                );
 
-        ui.add_space(scale.py(4.0));
+                ui.add_space(scale.py(4.0));
 
-        // Target line
-        ui.label(
-            egui::RichText::new(format!("TARGET: {}", target_name))
-                .size(scale.py(CONTENT_FONT_SIZE))
-                .color(RIPPER_THEME)
-                .monospace(),
-        );
+                // Target line
+                ui.label(
+                    egui::RichText::new(format!("TARGET: {}", target_name))
+                        .size(scale.py(CONTENT_FONT_SIZE))
+                        .color(RIPPER_THEME)
+                        .monospace(),
+                );
 
-        ui.add_space(scale.py(10.0));
+                ui.add_space(scale.py(10.0));
 
-        // Animated sub-label
-        let dot_count = ((*elapsed / 0.45) as usize) % 4;
-        let status_text = if progress < 1.0 {
-            format!("Routing signal through network{}", ".".repeat(dot_count))
-        } else {
-            "Signal received — Earth uplink confirmed".to_string()
-        };
-        ui.label(
-            egui::RichText::new(status_text)
-                .size(scale.py(CONTENT_FONT_SIZE))
-                .color(LABEL_COLOR),
-        );
+                // Animated sub-label
+                let dot_count = ((*elapsed / 0.45) as usize) % 4;
+                let status_text = if progress < 1.0 {
+                    format!("Routing signal through network{}", ".".repeat(dot_count))
+                } else {
+                    "Signal received — Earth uplink confirmed".to_string()
+                };
+                ui.label(
+                    egui::RichText::new(status_text)
+                        .size(scale.py(CONTENT_FONT_SIZE))
+                        .color(LABEL_COLOR),
+                );
 
-        ui.add_space(scale.py(20.0));
-        progress_bar(ui, progress, scale.x * 480.0, scale.py(16.0));
-        ui.add_space(scale.py(18.0));
+                ui.add_space(scale.py(20.0));
+                progress_bar(ui, progress, scale.x * 480.0, scale.py(16.0));
+                ui.add_space(scale.py(18.0));
 
-        // Animated packet scan line
-        if progress < 1.0 {
-            ui.label(
-                egui::RichText::new(packet_scan_line(*elapsed))
-                    .size(scale.py(FONT_SMALL))
-                    .color(RIPPER_THEME)
-                    .monospace(),
-            );
-
-            ui.add_space(scale.py(14.0));
-
-            // Relay hop indicators
-            ui.horizontal_centered(|ui| {
-                for (i, &(label, _)) in RELAYS.iter().enumerate() {
-                    let bit = 1u8 << i;
-                    let done = (*minigames_triggered & bit) != 0;
-                    let color = if done { COLOR_DONE } else { RIPPER_THEME };
+                // Animated packet scan line
+                if progress < 1.0 {
                     ui.label(
-                        egui::RichText::new(format!("{} {}", if done { "◉" } else { "○" }, label))
+                        egui::RichText::new(packet_scan_line(*elapsed))
+                            .size(scale.py(FONT_SMALL))
+                            .color(RIPPER_THEME)
+                            .monospace(),
+                    );
+
+                    ui.add_space(scale.py(14.0));
+
+                    // Relay hop indicators
+                    for (i, &(label, _)) in RELAYS.iter().enumerate() {
+                        let bit = 1u8 << i;
+                        let done = (*minigames_triggered & bit) != 0;
+                        let color = if done { COLOR_DONE } else { RIPPER_THEME };
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "{} {}",
+                                if done { "◉" } else { "○" },
+                                label
+                            ))
                             .size(scale.py(FONT_SMALL))
                             .color(color)
                             .monospace(),
-                    );
-                    if i + 1 < RELAYS.len() {
-                        ui.add_space(scale.uniform() * 10.0);
+                        );
+                        if i + 1 < RELAYS.len() {
+                            ui.add_space(scale.py(8.0));
+                        }
                     }
+                    ui.add_space(scale.py(20.0));
                 }
             });
-        }
-    });
+        });
 
     NetRipperOutput {
         complete: progress >= 1.0,
