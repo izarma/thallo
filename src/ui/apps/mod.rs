@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_common_assets::json::JsonAssetPlugin;
 use bevy_egui::{
     EguiClipboard, EguiContexts, EguiPrimaryContextPass,
     egui::{self},
@@ -7,6 +8,9 @@ use bevy_egui::{
 use crate::{
     engine::{
         Pause, UiPassSystems,
+        ascii_animation::{
+            AsciiAnimation, DecrypterAsciiAnimationHandle, RipperAsciiAnimationHandle,
+        },
         design_scale::DesignScale,
         dialogue_runner::{DialogueRunner, Dialogues},
         file_system::FsHierarchy,
@@ -57,6 +61,17 @@ pub(super) fn plugin(app: &mut App) {
             )
             .in_set(UiPassSystems::Render),
     );
+    app.add_plugins(JsonAssetPlugin::<AsciiAnimation>::new(&["json"]));
+    let rain_drops_handle = app
+        .world_mut()
+        .resource::<AssetServer>()
+        .load("rain_drops_ascii.json");
+    app.insert_resource(RipperAsciiAnimationHandle(rain_drops_handle));
+    let rotating_thing_handle = app
+        .world_mut()
+        .resource::<AssetServer>()
+        .load("rotatingthing_ascii.json");
+    app.insert_resource(DecrypterAsciiAnimationHandle(rotating_thing_handle));
 }
 
 pub(crate) const WINDOW_DESIGN_W: f32 = 1040.0;
@@ -79,6 +94,9 @@ fn show_open_windows(
     paused: Res<State<Pause>>,
     unlock_state: Res<UnlockState>,
     mut clipboard: ResMut<EguiClipboard>,
+    ascii_animations: Res<Assets<AsciiAnimation>>,
+    ripper_ascii_handle: Res<RipperAsciiAnimationHandle>,
+    decrypter_ascii_handle: Res<DecrypterAsciiAnimationHandle>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
     let top_layer_window_id = ctx.memory(|mem| {
@@ -217,6 +235,7 @@ fn show_open_windows(
                                 elapsed,
                                 minigames_triggered,
                             } => {
+                                let ascii = ascii_animations.get(&decrypter_ascii_handle.0);
                                 let output = show_encrypted(
                                     ui,
                                     elapsed,
@@ -224,6 +243,7 @@ fn show_open_windows(
                                     dt,
                                     paused.0,
                                     &scale,
+                                    ascii,
                                 );
                                 if output.trigger_minigame {
                                     cmd.trigger(MinigameTrigger {
@@ -246,6 +266,7 @@ fn show_open_windows(
                             } => {
                                 let target =
                                     path.as_ref().map(|p| p.file_name()).unwrap_or("UNKNOWN");
+                                let ascii = ascii_animations.get(&ripper_ascii_handle.0);
                                 let output = show_netripper_transmit(
                                     ui,
                                     target,
@@ -254,6 +275,7 @@ fn show_open_windows(
                                     dt,
                                     paused.0,
                                     &scale,
+                                    ascii,
                                 );
                                 if output.trigger_minigame {
                                     cmd.trigger(MinigameTrigger {

@@ -6,6 +6,7 @@ use crate::{
     ui::menus::desktop::TaskBarState,
 };
 
+pub mod ascii_animation;
 pub mod asset_tracking;
 pub mod audio;
 pub mod design_scale;
