@@ -1,0 +1,196 @@
+name: Dev Build
+
+on:
+  # Trigger this workflow automatically on every push to `main`.
+  push:
+    branches: [main]
+
+# Cancel the dev build workflow when a more recent workflow begins.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+# Configure the dev build workflow by editing the following values.
+env:
+  # The base filename of the binary produced by `cargo build`.
+  cargo_build_binary_name: thallo
+
+  # The path to the assets directory.
+  assets_path: assets
+
+  # The itch.io project to deploy to in the format `user-name/project-name`.
+  # There will be no deployment to itch.io if this is commented out.
+  itch_page: izarma/thallo
+
+  # The base filename of the binary in the package produced by this workflow.
+  # Applies to Windows, macOS, and Linux releases.
+  # Defaults to `cargo_build_binary_name` if commented out.
+  #app_binary_name: thallo
+
+  # The name of the `.zip` or `.dmg` file produced by this workflow.
+  # Defaults to `app_binary_name` if commented out.
+  #app_package_name: thallo
+
+  # Before enabling LFS, please take a look at GitHub's documentation for costs and quota limits:
+  # <https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-storage-and-bandwidth-usage>
+  git_lfs: false
+
+jobs:
+  # Determine the version number for this workflow.
+  get-version:
+    runs-on: bevy0.18
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine version number
+        id: version
+        # Fall back to the Cargo.toml version.
+        run: |
+          echo "version=$(cargo pkgid | sed 's/.*#//')" >> "${GITHUB_OUTPUT}"
+
+  # Build and package a dev build for each platform.
+  build-dev:
+    needs:
+      - get-version
+    env:
+      version: ${{ needs.get-version.outputs.version }}
+      # Avoid rate-limiting. See: <https://github.com/cargo-bins/cargo-binstall/issues/2045>.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            binary_ext: .exe
+            package_ext: .zip
+
+          - platform: linux
+            package_ext: .zip
+
+    runs-on: bevy0.18
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Set up environment
+        run: |
+          # Default values:
+          echo "app_binary_name=${app_binary_name:=${{ env.cargo_build_binary_name }}}" >> "${GITHUB_ENV}"
+          echo "app_package_name=${app_package_name:=${app_binary_name}}" >> "${GITHUB_ENV}"
+
+          # File paths:
+          echo "app=tmp/app/${app_package_name}-dev" >> "${GITHUB_ENV}"
+          echo "package=${app_package_name}-dev-"'${{ matrix.platform }}${{ matrix.package_ext }}' >> "${GITHUB_ENV}"
+
+          # Rustflags:
+          RUSTFLAGS='-Zthreads=0'
+          if [ '${{ matrix.platform }}' != 'windows' ]; then
+            RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }"'-Zshare-generics=y'
+          fi
+          echo "RUSTFLAGS=${RUSTFLAGS}" >> "${GITHUB_ENV}"
+
+          # Determine the Rust target based on the platform.
+          # Linux and Windows are always built for x86_64 so the published binaries
+          # work on the most common desktops. Web uses wasm32.
+          case '${{ matrix.platform }}' in
+            linux)
+              RUST_TARGET="x86_64-unknown-linux-gnu"
+              ;;
+            windows)
+              RUST_TARGET="x86_64-pc-windows-gnu"
+              ;;
+          esac
+          echo "rust_target=${RUST_TARGET}" >> "${GITHUB_ENV}"
+
+          # Detect the host architecture so we know when cross-compilation is required.
+          HOST_ARCH=$(uname -m)
+          case "$HOST_ARCH" in
+            x86_64) HOST_ARCH_RUST="x86_64" ;;
+            aarch64) HOST_ARCH_RUST="aarch64" ;;
+            *) echo "Unsupported host architecture: $HOST_ARCH"; exit 1 ;;
+          esac
+          echo "host_arch=${HOST_ARCH_RUST}" >> "${GITHUB_ENV}"
+          if [ '${{ matrix.platform }}' = 'linux' ] && [ "$HOST_ARCH_RUST" != 'x86_64' ]; then
+            echo "needs_linux_cross=1" >> "${GITHUB_ENV}"
+          fi
+          if [ '${{ matrix.platform }}' = 'windows' ]; then
+            echo "needs_windows_cross=1" >> "${GITHUB_ENV}"
+          fi
+
+          # Dev builds are always deployed to itch.io when `itch_page` is configured.
+          echo 'is_itch_enabled=${{ env.itch_page != '' }}' >> "${GITHUB_ENV}"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: ${{ env.git_lfs }}
+
+      - name: Restore Rust cache
+        uses: https://github.com/Swatinem/rust-cache@v2
+        with:
+          shared-key: dev-${{ matrix.platform }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Prepare output directories
+        run: rm -rf tmp; mkdir -p tmp/binary '${{ env.app }}'
+
+      - name: Configure cross-compilation
+        run: |
+          if [ '${{ env.needs_linux_cross }}' = '1' ]; then
+            echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc" >> "${GITHUB_ENV}"
+            echo "PKG_CONFIG_ALLOW_CROSS=1" >> "${GITHUB_ENV}"
+            echo "PKG_CONFIG_LIBDIR=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> "${GITHUB_ENV}"
+          fi
+          if [ '${{ env.needs_windows_cross }}' = '1' ]; then
+            echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Build and add binaries to app
+        run: |
+          target='${{ env.rust_target }}'
+          bevy build --locked --target="${target}"
+          mv target/"${target}"/debug/'${{ env.cargo_build_binary_name }}${{ matrix.binary_ext }}' tmp/binary/"${target}"'${{ matrix.binary_ext }}'
+          mv tmp/binary/*'${{ matrix.binary_ext }}' '${{ env.app }}/${{ env.app_binary_name }}${{ matrix.binary_ext }}'
+
+      - name: Add assets to app
+        run: cp -R ./'${{ env.assets_path }}' '${{ env.app }}' || true # Ignore error if assets folder does not exist.
+
+      - name: Package app
+        working-directory: tmp/app
+        run: zip --recurse-paths '${{ env.package }}' '${{ env.app_package_name }}-dev'
+
+      - name: Cache butler
+        if: ${{ env.is_itch_enabled == 'true' }}
+        id: butler-cache
+        uses: https://github.com/actions/cache@v4
+        with:
+          path: butler
+          key: butler-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Download butler
+        if: ${{ env.is_itch_enabled == 'true' && steps.butler-cache.outputs.cache-hit != 'true' }}
+        run: |
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) BUTLER_ARCH="linux-amd64" ;;
+            aarch64) BUTLER_ARCH="linux-arm64" ;;
+            *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+          esac
+          curl -L -o butler.zip "https://broth.itch.zone/butler/${BUTLER_ARCH}/LATEST/archive/default"
+          unzip butler.zip
+          chmod +x butler
+
+      - name: Push to itch.io
+        if: ${{ env.is_itch_enabled == 'true' }}
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
+        run: |
+          chmod +x butler
+          ./butler -V
+          ./butler push \
+            --fix-permissions \
+            --userversion='${{ needs.get-version.outputs.version }}' \
+            '${{ env.app }}' \
+            '${{ env.itch_page }}':'${{ matrix.platform }}-dev'
