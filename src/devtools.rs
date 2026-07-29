@@ -36,18 +36,24 @@ fn story_skip_hotkeys(mut cmd: Commands, keys: Res<ButtonInput<KeyCode>>) {
     }
 }
 
-/// Toggle individual flags in [`UnlockState`] for manual play-test control.
+/// Toggle individual flags in [`UnlockState::programs`] for manual play-test control.
 ///
 /// - `F7` -> unlock bruteforce
 /// - `F8` -> unlock netripper
 fn unlock_state_toggle_hotkeys(mut state: ResMut<UnlockState>, keys: Res<ButtonInput<KeyCode>>) {
     if keys.just_pressed(KeyCode::F7) {
-        state.bruteforce = !state.bruteforce;
-        info!("[Dev] UnlockState.bruteforce = {}", state.bruteforce);
+        state.programs.bruteforce = !state.programs.bruteforce;
+        info!(
+            "[Dev] UnlockState.programs.bruteforce = {}",
+            state.programs.bruteforce
+        );
     }
     if keys.just_pressed(KeyCode::F8) {
-        state.netripper = !state.netripper;
-        info!("[Dev] UnlockState.netripper = {}", state.netripper);
+        state.programs.netripper = !state.programs.netripper;
+        info!(
+            "[Dev] UnlockState.programs.netripper = {}",
+            state.programs.netripper
+        );
     }
 }
 

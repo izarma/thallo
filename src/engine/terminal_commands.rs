@@ -80,22 +80,24 @@ pub fn execute_command(
     }
 
     match cmd {
-        "bruteforce" if state.bruteforce => return cmd_bruteforce(arg, cwd, history, vfs),
+        "bruteforce" if state.programs.bruteforce => return cmd_bruteforce(arg, cwd, history, vfs),
         "bruteforce" => {
             history.push("st-os: command not found: bruteforce".into());
             return CommandOutput::None;
         }
-        "netripper" if state.netripper => return cmd_netripper(arg, cwd, history, vfs, state),
+        "netripper" if state.programs.netripper => {
+            return cmd_netripper(arg, cwd, history, vfs, state);
+        }
         "netripper" => {
             history.push("st-os: command not found: netripper".into());
             return CommandOutput::None;
         }
         "programs" => {
             let mut installed = Vec::new();
-            if state.bruteforce {
+            if state.programs.bruteforce {
                 installed.push("  bruteforce   decrypt an encrypted file or folder");
             }
-            if state.netripper {
+            if state.programs.netripper {
                 installed.push("  netripper   transmit data through the spacenet");
             }
             if installed.is_empty() {
@@ -291,7 +293,7 @@ fn cmd_netripper(
         return CommandOutput::None;
     }
     if arg.eq_ignore_ascii_case("sos") {
-        if !state.secure_transmitted {
+        if !state.story.secure_transmitted {
             history.push("netripper: Invalid Payload".into());
             return CommandOutput::None;
         }

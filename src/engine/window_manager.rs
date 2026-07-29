@@ -86,7 +86,7 @@ fn handle_open_node_events(
     state: Res<UnlockState>,
     mut cmd: Commands,
 ) {
-    if matches!(node.app_type, Applications::Decrypter { .. }) && !state.bruteforce {
+    if matches!(node.app_type, Applications::Decrypter { .. }) && !state.programs.bruteforce {
         cmd.trigger(OpenAlertEvent {
             name: node.name.clone(),
             alert: SystemAlerts::EncryptedError,

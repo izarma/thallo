@@ -32,8 +32,8 @@ pub(super) fn plugin(app: &mut App) {
         (
             setup_stuffs
                 .run_if(resource_exists::<FileAssets>.and(not(resource_exists::<FsHierarchy>))),
-            connect_sunday_net.run_if(|state: Res<UnlockState>| state.network_reconnected),
-            setup_act2.run_if(|state: Res<UnlockState>| state.act),
+            connect_sunday_net.run_if(|state: Res<UnlockState>| state.story.is_connecting_sunday()),
+            setup_act2.run_if(|state: Res<UnlockState>| state.story.is_act2()),
         ),
     );
 }

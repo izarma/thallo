@@ -93,9 +93,9 @@ fn tick_dialogue_runner(
     time: Res<Time>,
     mut cmd: Commands,
     assets: Option<Res<DesktopAssets>>,
-    unlock_state: Res<UnlockState>,
+    state: Res<UnlockState>,
 ) {
-    if !unlock_state.chat {
+    if !state.programs.chat {
         return;
     }
 

@@ -46,6 +46,9 @@ pub fn show_file_explorer(
                     cwd: path.clone(),
                     history: Vec::new(),
                     input: String::new(),
+                    command_history: Vec::new(),
+                    history_index: None,
+                    draft_input: String::new(),
                 },
             });
             ui.close();
@@ -117,6 +120,9 @@ pub fn show_file_explorer(
                         cwd: child_path,
                         history: Vec::new(),
                         input: String::new(),
+                        command_history: Vec::new(),
+                        history_index: None,
+                        draft_input: String::new(),
                     },
                 });
             }

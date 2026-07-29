@@ -92,7 +92,7 @@ fn show_open_windows(
     scale: Res<DesignScale>,
     time: Res<Time>,
     paused: Res<State<Pause>>,
-    unlock_state: Res<UnlockState>,
+    state: Res<UnlockState>,
     mut clipboard: ResMut<EguiClipboard>,
     ascii_animations: Res<Assets<AsciiAnimation>>,
     ripper_ascii_handle: Res<RipperAsciiAnimationHandle>,
@@ -176,6 +176,9 @@ fn show_open_windows(
                                 cwd,
                                 history,
                                 input,
+                                command_history,
+                                history_index,
+                                draft_input,
                             } => {
                                 ui.painter().image(
                                     tex.terminal,
@@ -186,24 +189,26 @@ fn show_open_windows(
                                     ),
                                     egui::Color32::WHITE,
                                 );
-                                if let Some(cmd_str) =
-                                    show_terminal(ui, cwd, history, input, &scale, is_focused)
-                                {
+                                if let Some(cmd_str) = show_terminal(
+                                    ui,
+                                    cwd,
+                                    history,
+                                    input,
+                                    command_history,
+                                    history_index,
+                                    draft_input,
+                                    &scale,
+                                    is_focused,
+                                ) {
                                     history.push(format!("> {}", cmd_str));
-                                    let cmd_output = execute_command(
-                                        &cmd_str,
-                                        cwd,
-                                        history,
-                                        &mut vfs,
-                                        &unlock_state,
-                                    );
+                                    let cmd_output =
+                                        execute_command(&cmd_str, cwd, history, &mut vfs, &state);
                                     match cmd_output {
                                         CommandOutput::OpenApp(event) => {
                                             cmd.trigger(event);
                                         }
                                         CommandOutput::None => {}
                                     }
-                                    input.clear();
                                 }
                                 WindowAction::None
                             }

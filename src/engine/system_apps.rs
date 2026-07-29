@@ -43,6 +43,12 @@ pub enum Applications {
         cwd: FsPath,
         history: Vec<String>,
         input: String,
+        /// Commands the user has typed, in chronological order (oldest first).
+        command_history: Vec<String>,
+        /// `None` when the user is typing freely; `Some(i)` when navigating `command_history`.
+        history_index: Option<usize>,
+        /// Line the user was typing before pressing UP, restored by pressing DOWN past the end.
+        draft_input: String,
     },
     Chatbox,
 }

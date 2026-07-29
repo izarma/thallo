@@ -7,9 +7,9 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 fn open_break_menu(mut next_menu: ResMut<NextState<Menu>>, state: Res<UnlockState>) {
-    if state.network_reconnected && !state.act {
+    if state.story.is_connecting_sunday() {
         next_menu.set(Menu::ConnectingSunday);
-    } else if state.act {
+    } else if state.story.is_act2() {
         next_menu.set(Menu::Act1Break);
     }
 }

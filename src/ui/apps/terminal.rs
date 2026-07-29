@@ -26,6 +26,9 @@ pub(crate) fn show_terminal(
     cwd: &FsPath,
     history: &Vec<String>,
     input: &mut String,
+    command_history: &mut Vec<String>,
+    history_index: &mut Option<usize>,
+    draft_input: &mut String,
     scale: &DesignScale,
     is_focused: bool,
 ) -> Option<String> {
@@ -119,11 +122,42 @@ pub(crate) fn show_terminal(
                     response.request_focus();
                 }
 
-                if response.has_focus()
-                    && ui.input(|i| i.key_pressed(egui::Key::Enter))
-                    && !input.trim().is_empty()
-                {
-                    return Some(input.trim().to_string());
+                if response.has_focus() {
+                    // Navigate command history like a normal terminal.
+                    if ui.input(|i| i.key_pressed(egui::Key::ArrowUp))
+                        && !command_history.is_empty()
+                    {
+                        if history_index.is_none() {
+                            *draft_input = input.clone();
+                            *history_index = Some(command_history.len() - 1);
+                        } else if let Some(idx) = *history_index {
+                            *history_index = Some(idx.saturating_sub(1));
+                        }
+                        if let Some(idx) = *history_index {
+                            *input = command_history[idx].clone();
+                        }
+                    }
+
+                    if ui.input(|i| i.key_pressed(egui::Key::ArrowDown))
+                        && let Some(idx) = *history_index
+                    {
+                        if idx + 1 < command_history.len() {
+                            *history_index = Some(idx + 1);
+                            *input = command_history[idx + 1].clone();
+                        } else {
+                            *history_index = None;
+                            *input = draft_input.clone();
+                        }
+                    }
+
+                    if ui.input(|i| i.key_pressed(egui::Key::Enter)) && !input.trim().is_empty() {
+                        let cmd = input.trim().to_string();
+                        command_history.push(cmd.clone());
+                        *history_index = None;
+                        draft_input.clear();
+                        input.clear();
+                        return Some(cmd);
+                    }
                 }
                 None
             })
