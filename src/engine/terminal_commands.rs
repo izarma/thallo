@@ -152,19 +152,73 @@ fn cmd_ls(
     CommandOutput::None
 }
 
+/// Resolve a path passed to `cd`, expanding `~` and handling `..` / `.`.
+fn resolve_cd_path(arg: &str, cwd: &FsPath) -> FsPath {
+    if arg.is_empty() || arg == "~" {
+        return FsPath::new(HOME_PATH);
+    }
+
+    // Expand leading "~/" into the home directory.
+    let arg = if let Some(rest) = arg.strip_prefix("~/") {
+        format!("{}/{}", HOME_PATH, rest)
+    } else {
+        arg.to_string()
+    };
+
+    // Normalize a leading "/" to mean "under HOME_PATH".
+    let normalized = if arg.starts_with('/') {
+        let without_slash = arg.trim_start_matches('/');
+        if without_slash.is_empty() || without_slash == HOME_PATH {
+            HOME_PATH.to_string()
+        } else if without_slash.starts_with(&format!("{}/", HOME_PATH)) {
+            without_slash.to_string()
+        } else {
+            format!("{}/{}", HOME_PATH, without_slash)
+        }
+    } else {
+        arg
+    };
+
+    // Start from the current directory for relative paths, or from root for
+    // absolute ones ("/Home/..." or "Home/...").
+    let is_absolute = normalized == HOME_PATH || normalized.starts_with(&format!("{}/", HOME_PATH));
+    let mut components: Vec<&str> = if is_absolute {
+        Vec::new()
+    } else {
+        cwd.segments().collect()
+    };
+
+    for component in normalized.split('/') {
+        match component {
+            "" | "." => continue,
+            ".." => {
+                components.pop();
+            }
+            other => components.push(other),
+        }
+    }
+
+    let result = if components.is_empty() {
+        HOME_PATH.to_string()
+    } else {
+        components.join("/")
+    };
+
+    // Keep cwd in canonical form: every path lives under HOME_PATH.
+    if result == HOME_PATH || result.starts_with(&format!("{}/", HOME_PATH)) {
+        FsPath::new(result)
+    } else {
+        FsPath::new(format!("{}/{}", HOME_PATH, result))
+    }
+}
+
 fn cmd_cd(
     arg: &str,
     cwd: &mut FsPath,
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
 ) -> CommandOutput {
-    let target = if arg.is_empty() || arg == "~" {
-        FsPath::new(HOME_PATH)
-    } else if arg == ".." {
-        cwd.parent().unwrap_or_else(|| cwd.clone())
-    } else {
-        cwd.join(arg)
-    };
+    let target = resolve_cd_path(arg, cwd);
     match vfs.get_node(&target) {
         Some(node) if matches!(node.file_type, FileType::Folder(_)) && node.is_accessible() => {
             *cwd = target;
@@ -219,6 +273,32 @@ fn cmd_clear(
     CommandOutput::None
 }
 
+/// Wrap `text` into lines no longer than `max_width` characters.
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current = String::new();
+
+    for word in text.split_whitespace() {
+        let separator_len = usize::from(!current.is_empty());
+        if current.len() + separator_len + word.len() > max_width {
+            if !current.is_empty() {
+                lines.push(current);
+            }
+            current = word.to_string();
+        } else {
+            if !current.is_empty() {
+                current.push(' ');
+            }
+            current.push_str(word);
+        }
+    }
+
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    lines
+}
+
 fn cmd_help(
     _arg: &str,
     _cwd: &mut FsPath,
@@ -227,17 +307,45 @@ fn cmd_help(
 ) -> CommandOutput {
     history.push("Available commands:".into());
     history.push("".into());
+
+    // Keep wrapped help lines inside the terminal frame
+    // (matches the "┌─ ST-OS TERMINAL ─...┐" header width).
+    const TOTAL_WIDTH: usize = 54;
+
+    let max_usage_width = COMMANDS
+        .iter()
+        .map(|cmd| {
+            if cmd.args.is_empty() {
+                cmd.name.len()
+            } else {
+                cmd.name.len() + 1 + cmd.args.len()
+            }
+        })
+        .max()
+        .unwrap_or(0);
+
+    let continuation_indent = format!("  {:<width$}  ", "", width = max_usage_width);
+    let desc_width = TOTAL_WIDTH.saturating_sub(continuation_indent.len());
+
     for cmd in COMMANDS {
-        let entry = if cmd.args.is_empty() {
-            format!("  {:<10}  {}", cmd.name, cmd.desc)
+        let usage = if cmd.args.is_empty() {
+            cmd.name.to_string()
         } else {
-            format!(
-                "  {:<10}  {}",
-                format!("{} {}", cmd.name, cmd.args),
-                cmd.desc
-            )
+            format!("{} {}", cmd.name, cmd.args)
         };
-        history.push(entry);
+        let wrapped = wrap_text(cmd.desc, desc_width);
+        for (i, line) in wrapped.into_iter().enumerate() {
+            if i == 0 {
+                history.push(format!(
+                    "  {:<width$}  {}",
+                    usage,
+                    line,
+                    width = max_usage_width
+                ));
+            } else {
+                history.push(format!("{}{}", continuation_indent, line));
+            }
+        }
     }
     CommandOutput::None
 }

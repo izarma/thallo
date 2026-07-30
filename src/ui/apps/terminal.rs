@@ -117,7 +117,6 @@ pub(crate) fn show_terminal(
 
                 let response = ui.add(field);
 
-                // THIS IS ALL FUCKED UP - NEEDS REDO
                 if is_focused && !response.has_focus() {
                     response.request_focus();
                 }
