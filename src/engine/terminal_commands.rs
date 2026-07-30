@@ -135,7 +135,7 @@ fn cmd_ls(
     let target = if arg.is_empty() {
         cwd.clone()
     } else {
-        cwd.join(arg)
+        resolve_path(arg, cwd)
     };
     match vfs.get_node(&target) {
         Some(node) if node.is_accessible() => {
@@ -152,8 +152,8 @@ fn cmd_ls(
     CommandOutput::None
 }
 
-/// Resolve a path passed to `cd`, expanding `~` and handling `..` / `.`.
-fn resolve_cd_path(arg: &str, cwd: &FsPath) -> FsPath {
+/// Resolve a path argument, expanding `~` and handling `..` / `.`.
+fn resolve_path(arg: &str, cwd: &FsPath) -> FsPath {
     if arg.is_empty() || arg == "~" {
         return FsPath::new(HOME_PATH);
     }
@@ -218,7 +218,7 @@ fn cmd_cd(
     history: &mut Vec<String>,
     vfs: &mut FsHierarchy,
 ) -> CommandOutput {
-    let target = resolve_cd_path(arg, cwd);
+    let target = resolve_path(arg, cwd);
     match vfs.get_node(&target) {
         Some(node) if matches!(node.file_type, FileType::Folder(_)) && node.is_accessible() => {
             *cwd = target;
@@ -242,7 +242,7 @@ fn cmd_open(
         history.push("open: missing operand".into());
         return CommandOutput::None;
     }
-    let target = cwd.join(arg);
+    let target = resolve_path(arg, cwd);
     match vfs.get_node(&target) {
         Some(node) if !node.is_accessible() => {
             history.push(format!("open: {}: Permission denied", arg));
@@ -365,7 +365,7 @@ fn cmd_unlock(
         return CommandOutput::None;
     }
 
-    let target = cwd.join(path_str);
+    let target = resolve_path(path_str, cwd);
     match vfs.unlock_with_password(&target, password) {
         Ok(()) => {
             history.push(format!("unlock: {} is now unlocked", path_str));
