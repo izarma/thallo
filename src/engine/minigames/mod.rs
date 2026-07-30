@@ -60,10 +60,9 @@ pub struct MinigameTrigger {
     pub game_type: MinigameType,
 }
 
-pub struct Minigame {
-    game_type: MinigameType,
-    pub brute_force: Option<BruteForceState>,
-    pub net_ripper: Option<NetRipperState>,
+pub enum Minigame {
+    BruteForce(BruteForceState),
+    NetRipper(NetRipperState),
 }
 
 #[derive(Event, Debug, Clone)]
@@ -74,25 +73,16 @@ pub struct MinigameOutcome {
 
 fn on_minigame_trigger(ev: On<MinigameTrigger>, mut state: ResMut<ActiveMinigame>) {
     if state.0.is_none() {
-        let (brute_force, net_ripper) = match ev.game_type {
-            MinigameType::BruteForce => (
-                Some(BruteForceState {
-                    filled_slots: [false; 8],
-                    current_angle: 0.0,
-                    speed: 2.0,
-                    missed_timer: 0.0,
-                    miss_count: 0,
-                    failed: false,
-                }),
-                None,
-            ),
-            MinigameType::NetRipper => (None, Some(NetRipperState::new_random())),
-        };
-
-        state.0 = Some(Minigame {
-            game_type: ev.game_type,
-            brute_force,
-            net_ripper,
+        state.0 = Some(match ev.game_type {
+            MinigameType::BruteForce => Minigame::BruteForce(BruteForceState {
+                filled_slots: [false; 8],
+                current_angle: 0.0,
+                speed: 2.0,
+                missed_timer: 0.0,
+                miss_count: 0,
+                failed: false,
+            }),
+            MinigameType::NetRipper => Minigame::NetRipper(NetRipperState::new_random()),
         });
     }
 }
@@ -131,16 +121,12 @@ fn render_minigame_overlay(
     let center = screen.center();
 
     if let Some(mg) = &mut active.0 {
-        match mg.game_type {
-            MinigameType::BruteForce => {
-                if let Some(state) = &active.0.as_ref().unwrap().brute_force {
-                    render_bruteforce(ctx, screen, center, &textures, state, &scale);
-                }
+        match mg {
+            Minigame::BruteForce(state) => {
+                render_bruteforce(ctx, screen, center, &textures, state, &scale);
             }
-            MinigameType::NetRipper => {
-                if let Some(state) = &mut mg.net_ripper {
-                    render_netripper(ctx, screen, center, state, &scale, &textures);
-                }
+            Minigame::NetRipper(state) => {
+                render_netripper(ctx, screen, center, state, &scale, &textures);
             }
         }
     }

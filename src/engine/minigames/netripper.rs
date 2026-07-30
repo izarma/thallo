@@ -5,7 +5,7 @@ use rand::Rng;
 use crate::{
     engine::{
         design_scale::DesignScale,
-        minigames::{ActiveMinigame, MinigameOutcome, MinigameTextures, MinigameType},
+        minigames::{ActiveMinigame, Minigame, MinigameOutcome, MinigameTextures, MinigameType},
     },
     ui::theme::palette::HEADING_FONT_SIZE,
 };
@@ -263,10 +263,7 @@ pub(super) fn update_netripper_logic(
     mut cmd: Commands,
 ) {
     let mut clear_active = false;
-    let Some(minigame) = &mut active.0 else {
-        return;
-    };
-    let Some(state) = &mut minigame.net_ripper else {
+    let Some(Minigame::NetRipper(state)) = &mut active.0 else {
         return;
     };
 

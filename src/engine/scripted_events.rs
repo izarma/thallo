@@ -51,14 +51,48 @@ pub enum NewFileReceiving {
     NetRipper,
 }
 
+/// Top-level progression state.
+///
+/// This intentionally groups *feature unlocks* and *story beats* into named
+/// sub-structs so the code can talk about `state.programs.bruteforce` or
+/// `state.story.is_act2()` instead of six flat booleans.
 #[derive(Resource, Default, Debug)]
 pub struct UnlockState {
+    pub programs: ProgramsUnlocked,
+    pub story: StoryProgress,
+}
+
+/// Features/programs the player has unlocked.
+#[derive(Default, Debug)]
+pub struct ProgramsUnlocked {
     pub chat: bool,
     pub bruteforce: bool,
     pub netripper: bool,
+}
+
+/// Story progression flags that drive screen/menu transitions and narrative checks.
+#[derive(Default, Debug)]
+pub struct StoryProgress {
     pub network_reconnected: bool,
-    pub act: bool, // true = act 2 | maybe can use bitmask instead to handle game endings
+    pub act: bool, // true = act 2
     pub secure_transmitted: bool,
+}
+
+impl StoryProgress {
+    /// True once the player has reached Act 2.
+    pub fn is_act2(&self) -> bool {
+        self.act
+    }
+
+    /// True during the "connect to Sunday" interstitial (after reconnect but before Act 2).
+    pub fn is_connecting_sunday(&self) -> bool {
+        self.network_reconnected && !self.act
+    }
+
+    /// True whenever the act-break transition sound effect should play.
+    pub fn should_play_break_sfx(&self) -> bool {
+        self.network_reconnected || self.act
+    }
 }
 
 fn on_scripted_event(
@@ -78,13 +112,13 @@ fn on_scripted_event(
             effect_file_trigger(name, &mut triggers, &mut dialogues, &mut cmd)
         }
         ScriptedEventTrigger::BeginReboot(boot) => {
-            effect_reboot(&mut state, boot, &mut next_screen)
+            effect_reboot(&mut state.story, boot, &mut next_screen)
         }
         ScriptedEventTrigger::ChatTrigger(trigger) => match trigger {
             ChatTriggerType::FileTransfer(recv) => effect_open_file_transfer_alert(&mut cmd, recv),
         },
         ScriptedEventTrigger::TransmitSecure => {
-            effect_transmit_secure(&mut state, &mut dialogues, &mut cmd)
+            effect_transmit_secure(&mut state.story, &mut dialogues, &mut cmd)
         }
         ScriptedEventTrigger::TransmitSOS => effect_transmit_sos(&mut dialogues),
         ScriptedEventTrigger::RipperFailed => effect_game_over(&mut state, &mut next_screen),
@@ -145,7 +179,6 @@ impl FileDialogueTriggers {
         let mut lines = Vec::new();
         let mut events = Vec::new();
 
-        let mut result = Vec::new();
         for trigger in self.triggers.iter_mut().filter(|t| !t.fired) {
             let ready = match trigger.oper {
                 FileTriggerOperation::Any => trigger.files.iter().any(|f| opened.contains(f)),
@@ -153,7 +186,6 @@ impl FileDialogueTriggers {
             };
             if ready {
                 trigger.fired = true;
-                result.extend(trigger.lines.iter().cloned());
                 lines.extend(trigger.lines.iter().cloned());
                 if let Some(ev) = trigger.on_complete.clone() {
                     events.push(ev);
@@ -172,10 +204,10 @@ fn effect_open_chat(
     dialogues: &Dialogues,
     cmd: &mut Commands,
 ) {
-    if state.chat && !state.act {
+    if state.programs.chat && !state.story.is_act2() {
         return;
     }
-    state.chat = true;
+    state.programs.chat = true;
     debug!("[Story] Chat unlocked");
     if matches!(runner.state, ChatBoxState::Done) {
         runner.state = derive_state(&dialogues.lines, dialogues.index);
@@ -209,29 +241,33 @@ fn effect_open_file_transfer_alert(cmd: &mut Commands, recv: NewFileReceiving) {
 }
 
 fn effect_reboot(
-    state: &mut UnlockState,
+    story: &mut StoryProgress,
     boot: RebootSequence,
     next_screen: &mut NextState<Screen>,
 ) {
     match boot {
         RebootSequence::NetworkConnect => {
-            state.network_reconnected = true;
+            story.network_reconnected = true;
             info!("network reconnected?");
             next_screen.set(Screen::ActBreak);
         }
         RebootSequence::ActTrans => {
-            state.act = true;
+            story.act = true;
             info!("act switch");
             next_screen.set(Screen::ActBreak);
         }
     }
 }
 
-fn effect_transmit_secure(state: &mut UnlockState, dialogues: &mut Dialogues, cmd: &mut Commands) {
-    if state.secure_transmitted {
+fn effect_transmit_secure(
+    story: &mut StoryProgress,
+    dialogues: &mut Dialogues,
+    cmd: &mut Commands,
+) {
+    if story.secure_transmitted {
         return;
     }
-    state.secure_transmitted = true;
+    story.secure_transmitted = true;
     dialogues.add_lines(vec![
         DialogueLine::new(false, "It should've reached Earth hopefully"),
         DialogueLine::new(true, "now what?"),
@@ -250,9 +286,9 @@ fn effect_transmit_sos(dialogues: &mut Dialogues) {
 }
 
 fn effect_game_over(state: &mut UnlockState, next_screen: &mut NextState<Screen>) {
-    // we will go back to act2 start title here - unlockstate needs to be updated accordinly
-    state.netripper = false;
-    state.secure_transmitted = false;
+    // Game over returns the player to the Act 2 title; reset the flags that gate the SOS run.
+    state.programs.netripper = false;
+    state.story.secure_transmitted = false;
     next_screen.set(Screen::ActBreak);
 }
 

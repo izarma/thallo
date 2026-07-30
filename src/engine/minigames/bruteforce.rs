@@ -1,6 +1,6 @@
 use crate::engine::{
     design_scale::DesignScale,
-    minigames::{ActiveMinigame, MinigameOutcome, MinigameTextures, MinigameType},
+    minigames::{ActiveMinigame, Minigame, MinigameOutcome, MinigameTextures, MinigameType},
 };
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -112,10 +112,7 @@ pub(super) fn update_bruteforce_logic(
     mut cmd: Commands,
 ) {
     let mut clear_active = false;
-    let Some(minigame) = &mut active.0 else {
-        return;
-    };
-    let Some(state) = &mut minigame.brute_force else {
+    let Some(Minigame::BruteForce(state)) = &mut active.0 else {
         return;
     };
     if state.missed_timer > 0.0 {

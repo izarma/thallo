@@ -46,10 +46,8 @@ fn spawn_break_timer(mut cmd: Commands) {
 }
 
 fn spawn_actbreak_sfx(mut cmd: Commands, assets: Res<FileAssets>, state: Res<UnlockState>) {
-    if state.network_reconnected && !state.act {
+    if state.story.should_play_break_sfx() {
         info!("break sfx playing");
-        cmd.spawn(sound_effect(assets.tans_act.clone()));
-    } else if state.act {
         cmd.spawn(sound_effect(assets.tans_act.clone()));
     }
 }

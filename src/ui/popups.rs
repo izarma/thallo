@@ -44,7 +44,7 @@ pub(super) fn plugin(app: &mut App) {
 fn show_popups(
     mut contexts: EguiContexts,
     mut open_alerts: ResMut<OpenAlerts>,
-    mut unlock_state: ResMut<UnlockState>,
+    mut state: ResMut<UnlockState>,
     textures: Res<DesktopTextures>,
     scale: Res<DesignScale>,
 ) -> Result {
@@ -156,8 +156,8 @@ fn show_popups(
             && entry.elapsed >= LOAD_DURATION
         {
             match download {
-                NewFileReceiving::BruteForce => unlock_state.bruteforce = true,
-                NewFileReceiving::NetRipper => unlock_state.netripper = true,
+                NewFileReceiving::BruteForce => state.programs.bruteforce = true,
+                NewFileReceiving::NetRipper => state.programs.netripper = true,
             }
         }
     }

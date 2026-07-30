@@ -116,6 +116,9 @@ fn show_desktop(
                                 cwd: path.clone(),
                                 history: Vec::new(),
                                 input: String::new(),
+                                command_history: Vec::new(),
+                                history_index: None,
+                                draft_input: String::new(),
                             },
                         });
                     }
@@ -225,6 +228,9 @@ fn show_task_bar(
                                             cwd: FsPath::new("Home"),
                                             history: Vec::new(),
                                             input: String::new(),
+                                            command_history: Vec::new(),
+                                            history_index: None,
+                                            draft_input: String::new(),
                                         },
                                     });
                                 }
