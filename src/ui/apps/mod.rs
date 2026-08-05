@@ -236,9 +236,9 @@ fn show_open_windows(
                             }
                             Applications::Decrypter {
                                 path,
-                                max_tries: _, // check later
                                 elapsed,
                                 minigames_triggered,
+                                ..
                             } => {
                                 let ascii = ascii_animations.get(&decrypter_ascii_handle.0);
                                 let output = show_encrypted(

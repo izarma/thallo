@@ -18,6 +18,7 @@ tracing = { version = "0.1", features = [
 ] }
 uuid = { version = "1.23.1", features = ["v4"] }
 vleue_kinetoscope = "0.5.0"
+ffmpeg-next = "8.1.0"
 rand = "0.9"
 bevy-inspector-egui = { version = "0.36", optional = true }
 bevy_common_assets = { version = "0.16", features = ["json"] }

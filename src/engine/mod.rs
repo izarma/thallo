@@ -19,6 +19,7 @@ pub mod scripted_events;
 
 pub mod system_apps;
 pub mod terminal_commands;
+pub mod video;
 pub mod window_manager;
 
 pub(super) fn plugin(app: &mut App) {
@@ -43,6 +44,7 @@ pub(super) fn plugin(app: &mut App) {
         scripted_events::plugin,
         minigames::plugin,
         post_processing::plugin,
+        video::plugin,
     ));
     app.add_systems(Update, pause_game.run_if(in_state(Screen::Desktop)));
 }
