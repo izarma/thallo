@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 mod act_break;
 pub mod desktop;
+mod gameover;
 mod loading;
 mod title;
 
@@ -12,6 +13,7 @@ pub(super) fn plugin(app: &mut App) {
         loading::plugin,
         desktop::plugin,
         act_break::plugin,
+        gameover::plugin,
     ));
 }
 
@@ -22,4 +24,5 @@ pub enum Screen {
     Loading,
     Desktop,
     ActBreak,
+    GameOver,
 }

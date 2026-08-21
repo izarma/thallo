@@ -107,7 +107,7 @@ fn act2_title(
     scale: Res<DesignScale>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
-    primitives::centered_panel(ctx, "act2_title", |ui| {
+    primitives::low_centered_panel(ctx, "act2_title", |ui| {
         primitives::header(ui, "ACT II", &scale);
         primitives::label(ui, "5 minutes before the catastrophe on Sunday", &scale);
         if primitives::button(ui, "Power On", &scale).clicked() {

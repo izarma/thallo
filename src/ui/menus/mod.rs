@@ -25,4 +25,6 @@ pub enum Menu {
     ConnectedSunday,
     Act1Break,
     Act2Startup,
+    Win,
+    Lose,
 }
