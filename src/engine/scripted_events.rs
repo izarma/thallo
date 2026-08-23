@@ -12,15 +12,23 @@ use crate::engine::{
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<UnlockState>();
     app.init_resource::<FileDialogueTriggers>();
+    app.init_resource::<Act2Timer>();
     app.add_observer(on_scripted_event);
     app.add_observer(on_file_opened);
-    app.add_systems(OnEnter(Screen::Desktop), schedule_open_chat);
+    app.add_systems(
+        OnEnter(Screen::Desktop),
+        (
+            schedule_open_chat,
+            start_act2_timer.run_if(|state: Res<UnlockState>| state.story.is_act2()),
+        ),
+    );
     app.add_systems(
         Update,
         (tick_delayed_events, check_dialogue_triggers)
             .in_set(CoreSystems::Logic)
             .run_if(in_state(Screen::Desktop)),
     );
+    app.add_systems(Update, tick_act2_timer.run_if(in_state(Screen::Desktop)));
 }
 
 #[derive(Event, Clone, Debug, PartialEq)]
@@ -32,6 +40,7 @@ pub enum ScriptedEventTrigger {
     TransmitSecure,
     TransmitSOS,
     RipperFailed,
+    Win,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -95,6 +104,33 @@ impl StoryProgress {
     }
 }
 
+/// One-shot result of a run, emitted once before [`Screen::GameOver`] is
+/// entered. The game-over screen reads it to pick the win or lose menu.
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GameOverEvent {
+    Win,
+    Lose,
+}
+
+/// Overall Act 2 countdown. Starts once the Act 2 desktop loads and, when it
+/// hits zero, forces a loss unless the SOS transmission has already completed.
+pub const ACT2_TIME_LIMIT: f32 = (5.0 * 60.0) + 1.0;
+
+#[derive(Resource)]
+pub struct Act2Timer {
+    pub remaining: f32,
+    pub active: bool,
+}
+
+impl Default for Act2Timer {
+    fn default() -> Self {
+        Self {
+            remaining: ACT2_TIME_LIMIT,
+            active: false,
+        }
+    }
+}
+
 fn on_scripted_event(
     ev: On<ScriptedEventTrigger>,
     mut state: ResMut<UnlockState>,
@@ -121,7 +157,10 @@ fn on_scripted_event(
             effect_transmit_secure(&mut state.story, &mut dialogues, &mut cmd)
         }
         ScriptedEventTrigger::TransmitSOS => effect_transmit_sos(&mut dialogues),
-        ScriptedEventTrigger::RipperFailed => effect_game_over(&mut state, &mut next_screen),
+        ScriptedEventTrigger::RipperFailed => {
+            effect_game_over(&mut state, &mut cmd, &mut next_screen)
+        }
+        ScriptedEventTrigger::Win => effect_win(&mut cmd, &mut next_screen),
     }
 }
 
@@ -280,16 +319,27 @@ fn effect_transmit_sos(dialogues: &mut Dialogues) {
     info!("[Story] SOS transmitted — ending act");
     dialogues.add_lines(vec![
         DialogueLine::new(false, "I guess this is it then."),
-        DialogueLine::new(true, "yeah I geuess it is.")
-            .on_complete(ScriptedEventTrigger::BeginReboot(RebootSequence::ActTrans)),
+        DialogueLine::new(true, "yeah I geuess it is.").on_complete(ScriptedEventTrigger::Win),
     ]);
 }
 
-fn effect_game_over(state: &mut UnlockState, next_screen: &mut NextState<Screen>) {
-    // Game over returns the player to the Act 2 title; reset the flags that gate the SOS run.
+fn effect_win(cmd: &mut Commands, next_screen: &mut NextState<Screen>) {
+    info!("[Story] Act complete — win");
+    cmd.trigger(GameOverEvent::Win);
+    next_screen.set(Screen::GameOver);
+}
+
+fn effect_game_over(
+    state: &mut UnlockState,
+    cmd: &mut Commands,
+    next_screen: &mut NextState<Screen>,
+) {
+    // Game over shows the lose menu and resets the flags that gate the SOS run,
+    // so a retry starts Act 2 from scratch.
     state.programs.netripper = false;
     state.story.secure_transmitted = false;
-    next_screen.set(Screen::ActBreak);
+    cmd.trigger(GameOverEvent::Lose);
+    next_screen.set(Screen::GameOver);
 }
 
 fn open_chatbox() -> OpenAppEvent {
@@ -312,6 +362,29 @@ fn schedule_open_chat(mut cmd: Commands) {
         timer: Timer::from_seconds(10.0, TimerMode::Once), // Chat Unlock Timer
         event: ScriptedEventTrigger::OpenChat,
     });
+}
+
+fn start_act2_timer(mut timer: ResMut<Act2Timer>) {
+    timer.active = true;
+    timer.remaining = ACT2_TIME_LIMIT;
+}
+
+fn tick_act2_timer(
+    time: Res<Time>,
+    mut timer: ResMut<Act2Timer>,
+    mut state: ResMut<UnlockState>,
+    mut cmd: Commands,
+    mut next_screen: ResMut<NextState<Screen>>,
+) {
+    if !timer.active {
+        return;
+    }
+    timer.remaining -= time.delta_secs();
+    if timer.remaining <= 0.0 {
+        timer.remaining = 0.0;
+        timer.active = false;
+        effect_game_over(&mut state, &mut cmd, &mut next_screen);
+    }
 }
 
 fn tick_delayed_events(

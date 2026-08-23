@@ -1,16 +1,14 @@
 use bevy::prelude::*;
 
-use crate::ui::menus::Menu;
+use crate::{engine::scripted_events::GameOverEvent, ui::menus::Menu};
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(OnEnter(super::Screen::GameOver), open_game_over_menu);
+    app.add_observer(on_game_over);
 }
 
-fn open_game_over_menu(mut next_menu: ResMut<NextState<Menu>>) {
-    // add input for win/lose
-    if true {
-        next_menu.set(Menu::Win);
-    } else {
-        next_menu.set(Menu::Lose);
+fn on_game_over(ev: On<GameOverEvent>, mut next_menu: ResMut<NextState<Menu>>) {
+    match *ev {
+        GameOverEvent::Win => next_menu.set(Menu::Win),
+        GameOverEvent::Lose => next_menu.set(Menu::Lose),
     }
 }

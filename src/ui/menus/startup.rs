@@ -65,7 +65,7 @@ fn startup_ui(
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
-    primitives::centered_panel(ctx, "startup_menu", |ui| {
+    primitives::low_centered_panel(ctx, "startup_menu", |ui| {
         ui.style_mut().interaction.selectable_labels = false;
 
         if primitives::button(ui, "Yes", &scale).clicked() {
@@ -107,7 +107,7 @@ fn act2_title(
     scale: Res<DesignScale>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
-    primitives::low_centered_panel(ctx, "act2_title", |ui| {
+    primitives::centered_panel(ctx, "act2_title", |ui| {
         primitives::header(ui, "ACT II", &scale);
         primitives::label(ui, "5 minutes before the catastrophe on Sunday", &scale);
         if primitives::button(ui, "Power On", &scale).clicked() {
