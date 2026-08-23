@@ -5,7 +5,7 @@ use crate::{
     engine::{
         design_scale::DesignScale,
         screens::Screen,
-        video::{VideoPlayers, spawn_video_player},
+        video::{VideoPlayers, spawn_fullscreen_video},
     },
     ui::{menus::Menu, theme::widgets::primitives},
 };
@@ -33,28 +33,15 @@ fn spawn_startup_video(
     mut images: ResMut<Assets<Image>>,
     mut players: NonSendMut<VideoPlayers>,
 ) {
-    let Some((entity, image_handle)) = spawn_video_player(
+    spawn_fullscreen_video(
         &mut commands,
         &mut images,
         &mut players,
         DISCLAIMER_VIDEO_PATH,
         true,
-    ) else {
-        return;
-    };
-
-    commands.entity(entity).insert((
-        Name::new("StartupVideo"),
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            position_type: PositionType::Absolute,
-            ..default()
-        },
-        ImageNode::new(image_handle),
-        // Keep the video visible only while the startup menu is active.
-        DespawnOnExit(Menu::Startup),
-    ));
+        "StartupVideo",
+        Menu::Startup,
+    );
 }
 
 fn startup_ui(

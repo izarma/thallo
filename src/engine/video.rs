@@ -26,6 +26,9 @@ fn init_ffmpeg() {
 #[derive(Component)]
 pub struct VideoPlayer {
     pub loop_video: bool,
+    /// Set to `true` once a non-looping video has played to completion.
+    /// Looping videos never set this.
+    pub finished: bool,
     pub(crate) image_handle: Handle<Image>,
 }
 
@@ -111,6 +114,7 @@ pub fn spawn_video_player(
     let entity = commands
         .spawn(VideoPlayer {
             loop_video,
+            finished: false,
             image_handle: image_handle.clone(),
         })
         .id();
@@ -120,12 +124,51 @@ pub fn spawn_video_player(
     Some((entity, image_handle))
 }
 
+/// Spawn a full-screen video node that fills the viewport and despawns when the
+/// `despawn_on_exit` state is exited.
+///
+/// This wraps [`spawn_video_player`] with the display and lifecycle components
+/// that every menu cutscene needs, so callers only have to supply a path and a
+/// name. Returns the spawned entity, or `None` if the video failed to load.
+pub fn spawn_fullscreen_video<S: States>(
+    commands: &mut Commands,
+    images: &mut Assets<Image>,
+    players: &mut VideoPlayers,
+    path: &str,
+    loop_video: bool,
+    name: &str,
+    despawn_on_exit: S,
+) -> Option<Entity> {
+    let (entity, image_handle) = spawn_video_player(commands, images, players, path, loop_video)?;
+
+    commands.entity(entity).insert((
+        Name::new(name.to_string()),
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            position_type: PositionType::Absolute,
+            ..default()
+        },
+        ImageNode::new(image_handle),
+        DespawnOnExit(despawn_on_exit),
+    ));
+
+    Some(entity)
+}
+
+/// Returns `true` when the menu's cutscene has finished playing, or when no
+/// cutscene video was spawned at all (for example because the file failed to
+/// load). Callers use this to defer their UI until the video completes.
+pub fn cutscene_finished(video: &Query<&VideoPlayer>) -> bool {
+    video.iter().next().is_none_or(|player| player.finished)
+}
+
 fn update_video_players(
     mut players: NonSendMut<VideoPlayers>,
-    query: Query<(Entity, &VideoPlayer)>,
+    mut query: Query<(Entity, &mut VideoPlayer)>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    for (entity, player) in &query {
+    for (entity, mut player) in &mut query {
         let Some(data) = players.data.get_mut(&entity) else {
             continue;
         };
@@ -146,6 +189,10 @@ fn update_video_players(
                     error!("Failed to loop video {}: {err}", data.path);
                 }
             }
+        } else {
+            // Non-looping video has reached its end. Hold on the final frame
+            // and signal callers that the cutscene is complete.
+            player.finished = true;
         }
     }
 }

@@ -12,6 +12,7 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         (
             story_skip_hotkeys,
+            game_over_hotkeys,
             unlock_state_toggle_hotkeys,
             log_unlock_state,
         ),
@@ -33,6 +34,22 @@ fn story_skip_hotkeys(mut cmd: Commands, keys: Res<ButtonInput<KeyCode>>) {
     if keys.just_pressed(KeyCode::F6) {
         info!("[Dev] Skip -> Act 2");
         cmd.trigger(ScriptedEventTrigger::BeginReboot(RebootSequence::ActTrans));
+    }
+}
+
+/// Play-test shortcuts for jumping straight to the game-over screen.
+///
+/// - `F9` -> instantly win (show the ending).
+/// - `F10` -> instantly lose (show the death screen).
+fn game_over_hotkeys(mut cmd: Commands, keys: Res<ButtonInput<KeyCode>>) {
+    if keys.just_pressed(KeyCode::F9) {
+        info!("[Dev] Skip -> Win");
+        cmd.trigger(ScriptedEventTrigger::Win);
+    }
+
+    if keys.just_pressed(KeyCode::F10) {
+        info!("[Dev] Skip -> Lose");
+        cmd.trigger(ScriptedEventTrigger::RipperFailed);
     }
 }
 
