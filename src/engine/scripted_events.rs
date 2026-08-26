@@ -8,6 +8,7 @@ use crate::engine::{
     screens::Screen,
     system_apps::{Applications, ChatBoxState, OpenAlertEvent, OpenAppEvent, SystemAlerts},
 };
+use crate::game::beats::ApplyBeatCommand;
 
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<UnlockState>();
@@ -15,13 +16,7 @@ pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Act2Timer>();
     app.add_observer(on_scripted_event);
     app.add_observer(on_file_opened);
-    app.add_systems(
-        OnEnter(Screen::Desktop),
-        (
-            schedule_open_chat,
-            start_act2_timer.run_if(|state: Res<UnlockState>| state.story.is_act2()),
-        ),
-    );
+    app.add_systems(OnEnter(Screen::Desktop), schedule_open_chat);
     app.add_systems(
         Update,
         (tick_delayed_events, check_dialogue_triggers)
@@ -36,6 +31,7 @@ pub enum ScriptedEventTrigger {
     OpenChat,
     FileTrigger(String),
     ChatTrigger(ChatTriggerType),
+    FileTransferComplete(NewFileReceiving),
     BeginReboot(RebootSequence),
     TransmitSecure,
     TransmitSOS,
@@ -60,6 +56,38 @@ pub enum NewFileReceiving {
     NetRipper,
 }
 
+/// The single source of truth for narrative position.
+///
+/// Replaces the old set of derived booleans (`network_reconnected`, `act`) with
+/// one addressable value. [`apply_beat`](crate::game::beats::apply_beat) rebuilds
+/// every piece of state that depends on this.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub enum StoryBeat {
+    /// Desktop + chat + the Act 1 file puzzle.
+    #[default]
+    Act1Intro,
+    /// `[SECURE]` folder injected, the player hunts for `omega`.
+    Act1Connecting,
+    /// NetRipper + the SOS countdown.
+    Act2Sos,
+    /// Terminal beat: the player won.
+    Win,
+    /// Terminal beat: the player lost.
+    Lose,
+}
+
+impl StoryBeat {
+    /// Every beat, in narrative order, for the dev jump panel.
+    #[cfg(feature = "dev")]
+    pub const ALL: [StoryBeat; 5] = [
+        StoryBeat::Act1Intro,
+        StoryBeat::Act1Connecting,
+        StoryBeat::Act2Sos,
+        StoryBeat::Win,
+        StoryBeat::Lose,
+    ];
+}
+
 /// Top-level progression state.
 ///
 /// This intentionally groups *feature unlocks* and *story beats* into named
@@ -79,28 +107,72 @@ pub struct ProgramsUnlocked {
     pub netripper: bool,
 }
 
+impl ProgramsUnlocked {
+    /// The canonical program unlocks for a beat, before any mid-beat unlocks.
+    fn for_beat(beat: StoryBeat) -> Self {
+        match beat {
+            StoryBeat::Act1Intro => ProgramsUnlocked {
+                chat: false,
+                bruteforce: false,
+                netripper: false,
+            },
+            StoryBeat::Act1Connecting => ProgramsUnlocked {
+                chat: true,
+                bruteforce: true,
+                netripper: false,
+            },
+            StoryBeat::Act2Sos => ProgramsUnlocked {
+                chat: true,
+                bruteforce: true,
+                netripper: false,
+            },
+            StoryBeat::Win | StoryBeat::Lose => ProgramsUnlocked {
+                chat: true,
+                bruteforce: true,
+                netripper: true,
+            },
+        }
+    }
+}
+
 /// Story progression flags that drive screen/menu transitions and narrative checks.
 #[derive(Default, Debug)]
 pub struct StoryProgress {
-    pub network_reconnected: bool,
-    pub act: bool, // true = act 2
+    /// Authoritative narrative position.
+    pub beat: StoryBeat,
+    /// Mid-Act-2 flag: set once the `[SECURE]` payload has been transmitted,
+    /// which gates the `netripper sos` command.
     pub secure_transmitted: bool,
 }
 
 impl StoryProgress {
     /// True once the player has reached Act 2.
     pub fn is_act2(&self) -> bool {
-        self.act
+        matches!(self.beat, StoryBeat::Act2Sos)
     }
 
     /// True during the "connect to Sunday" interstitial (after reconnect but before Act 2).
     pub fn is_connecting_sunday(&self) -> bool {
-        self.network_reconnected && !self.act
+        matches!(self.beat, StoryBeat::Act1Connecting)
     }
 
-    /// True whenever the act-break transition sound effect should play.
+    /// True when the connecting-Sunday transition sound effect should play.
+    /// Act 2 no longer plays a break sfx (the single title card is silent).
     pub fn should_play_break_sfx(&self) -> bool {
-        self.network_reconnected || self.act
+        self.is_connecting_sunday()
+    }
+}
+
+impl UnlockState {
+    /// Reset [`StoryProgress`] and [`ProgramsUnlocked`] to the canonical values for `beat`.
+    ///
+    /// This only touches the *flags*; rebuilding the VFS, dialogues, triggers and
+    /// transient UI state is done by [`crate::game::beats::apply_beat`], which is the
+    /// only entry point that should call this.
+    pub(crate) fn apply_beat(&mut self, beat: StoryBeat) {
+        self.story.beat = beat;
+        self.story.secure_transmitted = false;
+        self.programs = ProgramsUnlocked::for_beat(beat);
     }
 }
 
@@ -147,9 +219,10 @@ fn on_scripted_event(
         ScriptedEventTrigger::FileTrigger(name) => {
             effect_file_trigger(name, &mut triggers, &mut dialogues, &mut cmd)
         }
-        ScriptedEventTrigger::BeginReboot(boot) => {
-            effect_reboot(&mut state.story, boot, &mut next_screen)
+        ScriptedEventTrigger::FileTransferComplete(recv) => {
+            effect_file_transfer_complete(&mut state, recv)
         }
+        ScriptedEventTrigger::BeginReboot(boot) => effect_reboot(boot, &mut cmd, &mut next_screen),
         ScriptedEventTrigger::ChatTrigger(trigger) => match trigger {
             ChatTriggerType::FileTransfer(recv) => effect_open_file_transfer_alert(&mut cmd, recv),
         },
@@ -157,9 +230,7 @@ fn on_scripted_event(
             effect_transmit_secure(&mut state.story, &mut dialogues, &mut cmd)
         }
         ScriptedEventTrigger::TransmitSOS => effect_transmit_sos(&mut dialogues),
-        ScriptedEventTrigger::RipperFailed => {
-            effect_game_over(&mut state, &mut cmd, &mut next_screen)
-        }
+        ScriptedEventTrigger::RipperFailed => effect_lose(&mut cmd, &mut next_screen),
         ScriptedEventTrigger::Win => effect_win(&mut cmd, &mut next_screen),
     }
 }
@@ -212,6 +283,16 @@ impl FileDialogueTriggers {
             fired: false,
         });
     }
+
+    /// Remove every registered trigger and forget which files have been opened.
+    ///
+    /// Called by [`apply_beat`](crate::game::beats::apply_beat) so rebuilding state
+    /// for a beat never leaks the previous beat's `opened` set.
+    pub fn clear(&mut self) {
+        self.triggers.clear();
+        self.opened.clear();
+    }
+
     pub fn notify_opened(&mut self, name: &str) -> (Vec<DialogueLine>, Vec<ScriptedEventTrigger>) {
         self.opened.insert(name.to_string());
         let opened = &self.opened;
@@ -279,20 +360,25 @@ fn effect_open_file_transfer_alert(cmd: &mut Commands, recv: NewFileReceiving) {
     ));
 }
 
-fn effect_reboot(
-    story: &mut StoryProgress,
-    boot: RebootSequence,
-    next_screen: &mut NextState<Screen>,
-) {
+/// Unlock a program once its file-transfer alert has finished playing out.
+fn effect_file_transfer_complete(state: &mut UnlockState, recv: NewFileReceiving) {
+    match recv {
+        NewFileReceiving::BruteForce => state.programs.bruteforce = true,
+        NewFileReceiving::NetRipper => state.programs.netripper = true,
+    }
+    info!("[Story] Program unlocked: {:?}", recv);
+}
+
+fn effect_reboot(boot: RebootSequence, cmd: &mut Commands, next_screen: &mut NextState<Screen>) {
     match boot {
         RebootSequence::NetworkConnect => {
-            story.network_reconnected = true;
             info!("network reconnected?");
+            cmd.queue(ApplyBeatCommand(StoryBeat::Act1Connecting));
             next_screen.set(Screen::ActBreak);
         }
         RebootSequence::ActTrans => {
-            story.act = true;
             info!("act switch");
+            cmd.queue(ApplyBeatCommand(StoryBeat::Act2Sos));
             next_screen.set(Screen::ActBreak);
         }
     }
@@ -325,19 +411,14 @@ fn effect_transmit_sos(dialogues: &mut Dialogues) {
 
 fn effect_win(cmd: &mut Commands, next_screen: &mut NextState<Screen>) {
     info!("[Story] Act complete — win");
+    cmd.queue(ApplyBeatCommand(StoryBeat::Win));
     cmd.trigger(GameOverEvent::Win);
     next_screen.set(Screen::GameOver);
 }
 
-fn effect_game_over(
-    state: &mut UnlockState,
-    cmd: &mut Commands,
-    next_screen: &mut NextState<Screen>,
-) {
-    // Game over shows the lose menu and resets the flags that gate the SOS run,
-    // so a retry starts Act 2 from scratch.
-    state.programs.netripper = false;
-    state.story.secure_transmitted = false;
+fn effect_lose(cmd: &mut Commands, next_screen: &mut NextState<Screen>) {
+    info!("[Story] Act failed — lose");
+    cmd.queue(ApplyBeatCommand(StoryBeat::Lose));
     cmd.trigger(GameOverEvent::Lose);
     next_screen.set(Screen::GameOver);
 }
@@ -364,15 +445,9 @@ fn schedule_open_chat(mut cmd: Commands) {
     });
 }
 
-fn start_act2_timer(mut timer: ResMut<Act2Timer>) {
-    timer.active = true;
-    timer.remaining = ACT2_TIME_LIMIT;
-}
-
 fn tick_act2_timer(
     time: Res<Time>,
     mut timer: ResMut<Act2Timer>,
-    mut state: ResMut<UnlockState>,
     mut cmd: Commands,
     mut next_screen: ResMut<NextState<Screen>>,
 ) {
@@ -383,7 +458,7 @@ fn tick_act2_timer(
     if timer.remaining <= 0.0 {
         timer.remaining = 0.0;
         timer.active = false;
-        effect_game_over(&mut state, &mut cmd, &mut next_screen);
+        effect_lose(&mut cmd, &mut next_screen);
     }
 }
 

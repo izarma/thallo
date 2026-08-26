@@ -5,8 +5,10 @@ use crate::{
     engine::{
         design_scale::DesignScale,
         screens::Screen,
+        scripted_events::StoryBeat,
         video::{VideoPlayer, VideoPlayers, cutscene_finished, spawn_fullscreen_video},
     },
+    game::beats::ApplyBeatCommand,
     ui::{menus::Menu, theme::widgets::primitives},
 };
 
@@ -40,6 +42,8 @@ fn lose_menu(
     mut contexts: EguiContexts,
     scale: Res<DesignScale>,
     mut next_screen: ResMut<NextState<Screen>>,
+    mut next_menu: ResMut<NextState<Menu>>,
+    mut cmd: Commands,
     mut app_exit: MessageWriter<AppExit>,
     video: Query<&VideoPlayer>,
 ) -> Result {
@@ -58,7 +62,11 @@ fn lose_menu(
             &scale,
         );
         if primitives::button(ui, "Retry", &scale).clicked() {
-            next_screen.set(Screen::ActBreak);
+            // Rebuild a clean Act 2 and boot straight back to the desktop,
+            // skipping the ActBreak -> Title -> Act2Startup title card.
+            cmd.queue(ApplyBeatCommand(StoryBeat::Act2Sos));
+            next_menu.set(Menu::None);
+            next_screen.set(Screen::Loading);
         }
         if primitives::button(ui, "Quit", &scale).clicked() {
             app_exit.write(AppExit::Success);

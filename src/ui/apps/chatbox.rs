@@ -234,7 +234,8 @@ fn render_status_bar(
                     .inner // Extract the response from the inner Ui
                     .clicked();
 
-                let enter_pressed = is_focused && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                let enter_pressed =
+                    ready_to_send && is_focused && ui.input(|i| i.key_pressed(egui::Key::Enter));
 
                 if send_clicked || enter_pressed {
                     send = true;

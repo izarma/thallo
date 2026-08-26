@@ -1,41 +1,22 @@
 use bevy::prelude::*;
-use bevy_egui::{
-    EguiContexts, EguiTextureHandle,
-    egui::{self},
-};
 
 use crate::{
     engine::{
         asset_tracking::LoadResource,
-        audio::music,
-        file_system::FsHierarchy,
+        audio::{Music, music},
         screens::Screen,
-        scripted_events::{FileDialogueTriggers, UnlockState},
-        window_manager::OpenWindows,
+        scripted_events::UnlockState,
     },
-    game::{
-        dialogues::{
-            build_act1_dialogues, build_act1_file_triggers, build_act2_dialogues,
-            build_netconn_file_triggers,
-        },
-        files::{build_fs, inject_secure_folder, strip_to_secure},
-    },
+    game::beats::ApplyBeatCommand,
 };
 
+pub mod beats;
 mod dialogues;
 mod files;
 
 pub(super) fn plugin(app: &mut App) {
     app.load_resource::<FileAssets>();
-    app.add_systems(
-        OnEnter(Screen::Desktop),
-        (
-            setup_stuffs
-                .run_if(resource_exists::<FileAssets>.and(not(resource_exists::<FsHierarchy>))),
-            connect_sunday_net.run_if(|state: Res<UnlockState>| state.story.is_connecting_sunday()),
-            setup_act2.run_if(|state: Res<UnlockState>| state.story.is_act2()),
-        ),
-    );
+    app.add_systems(OnEnter(Screen::Desktop), setup_desktop_for_beat);
 }
 
 #[derive(Resource, Asset, Clone, Reflect)]
@@ -60,47 +41,18 @@ impl FromWorld for FileAssets {
     }
 }
 
-fn setup_stuffs(
-    mut file_triggers: ResMut<FileDialogueTriggers>,
+/// Single `OnEnter(Desktop)` setup that rebuilds the desktop for the current
+/// [`StoryBeat`](crate::engine::scripted_events::StoryBeat) and (idempotently)
+/// spawns the background music track.
+fn setup_desktop_for_beat(
     mut cmd: Commands,
     assets: Res<FileAssets>,
+    state: Res<UnlockState>,
+    music_query: Query<(), (With<Music>, With<DespawnOnExit<Screen>>)>,
 ) {
-    cmd.spawn((music(assets.ac1bg.clone()), DespawnOnExit(Screen::Desktop)));
-    cmd.insert_resource(build_fs());
-    cmd.insert_resource(build_act1_dialogues());
-    build_act1_file_triggers(&mut file_triggers);
-}
+    if music_query.is_empty() {
+        cmd.spawn((music(assets.ac1bg.clone()), DespawnOnExit(Screen::Desktop)));
+    }
 
-fn connect_sunday_net(
-    mut vfs: ResMut<FsHierarchy>,
-    mut contexts: EguiContexts,
-    assets: Res<FileAssets>,
-    images: Res<Assets<Image>>,
-    mut open_windows: ResMut<OpenWindows>,
-    mut file_triggers: ResMut<FileDialogueTriggers>,
-) {
-    open_windows.windows.clear();
-    file_triggers.triggers.clear();
-    let size = images
-        .get(&assets.omega)
-        .map(|img| {
-            let s = img.size_f32();
-            egui::Vec2::new(s.x, s.y)
-        })
-        .unwrap_or(egui::Vec2::splat(64.0));
-    let omega_tex = contexts.add_image(EguiTextureHandle::Weak(assets.omega.id()));
-    inject_secure_folder(&mut vfs, omega_tex, size);
-    build_netconn_file_triggers(&mut file_triggers);
-}
-
-fn setup_act2(
-    mut cmd: Commands,
-    mut vfs: ResMut<FsHierarchy>,
-    mut open_windows: ResMut<OpenWindows>,
-    mut file_triggers: ResMut<FileDialogueTriggers>,
-) {
-    strip_to_secure(&mut vfs);
-    open_windows.windows.clear();
-    file_triggers.triggers.clear();
-    cmd.insert_resource(build_act2_dialogues());
+    cmd.queue(ApplyBeatCommand(state.story.beat));
 }
