@@ -94,7 +94,8 @@ fn beat_jump_panel(
     Ok(())
 }
 
-/// Route a beat jump to the right `Screen`/`Menu`, rebuilding state via [`apply_beat`].
+/// Route a beat jump to the right `Screen`/`Menu`, rebuilding state via
+/// [`apply_beat`](crate::game::beats::apply_beat).
 fn jump_to_beat(
     beat: StoryBeat,
     cmd: &mut Commands,
