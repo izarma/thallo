@@ -154,15 +154,10 @@ impl StoryProgress {
         matches!(self.beat, StoryBeat::Act2Sos)
     }
 
-    /// True during the "connect to Sunday" interstitial (after reconnect but before Act 2).
-    pub fn is_connecting_sunday(&self) -> bool {
-        matches!(self.beat, StoryBeat::Act1Connecting)
-    }
-
-    /// True when the connecting-Sunday transition sound effect should play.
-    /// Act 2 no longer plays a break sfx (the single title card is silent).
+    /// True when the act-break transition sound effect should play.
+    /// Only the Act 2 title card plays it; the Sunday-connecting interstitial is silent.
     pub fn should_play_break_sfx(&self) -> bool {
-        self.is_connecting_sunday()
+        self.is_act2()
     }
 }
 
@@ -395,9 +390,12 @@ fn effect_transmit_secure(
     }
     story.secure_transmitted = true;
     dialogues.add_lines(vec![
-        DialogueLine::new(false, "It should've reached Earth hopefully"),
-        DialogueLine::new(true, "now what?"),
-        DialogueLine::new(false, "Lets send an SOS, and best we can do is hope. Use the netripper sos command from your terminal"),
+        DialogueLine::new(
+            false,
+            "Good, good. Now use «netripper SOS» command to send the distress signal.",
+        ),
+        DialogueLine::new(false, "There is something going on outside."),
+        DialogueLine::new(false, "An explosion? And gunshots, definitely."),
     ]);
     cmd.trigger(open_chatbox());
 }
@@ -405,8 +403,12 @@ fn effect_transmit_secure(
 fn effect_transmit_sos(dialogues: &mut Dialogues) {
     info!("[Story] SOS transmitted — ending act");
     dialogues.add_lines(vec![
-        DialogueLine::new(false, "I guess this is it then."),
-        DialogueLine::new(true, "yeah I geuess it is.").on_complete(ScriptedEventTrigger::Win),
+        DialogueLine::new(false, "go and find Ria."),
+        DialogueLine::new(
+            false,
+            "I suspect the letter we sent was never delivered, so you have to find her.",
+        ),
+        DialogueLine::new(false, "I'll be back.").on_complete(ScriptedEventTrigger::Win),
     ]);
 }
 
@@ -439,7 +441,15 @@ struct DelayedEvent {
     event: ScriptedEventTrigger,
 }
 
-fn schedule_open_chat(mut cmd: Commands) {
+fn schedule_open_chat(mut cmd: Commands, state: Res<UnlockState>) {
+    // Later beats enter the desktop with chat already unlocked. Open it now so
+    // the first incoming message is visible rather than waiting for Act 1's
+    // introductory unlock delay.
+    if state.programs.chat {
+        cmd.trigger(ScriptedEventTrigger::OpenChat);
+        return;
+    }
+
     cmd.spawn(DelayedEvent {
         timer: Timer::from_seconds(10.0, TimerMode::Once), // Chat Unlock Timer
         event: ScriptedEventTrigger::OpenChat,

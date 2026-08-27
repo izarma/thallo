@@ -1,4 +1,7 @@
-use bevy_egui::{EguiClipboard, egui};
+use bevy_egui::{
+    EguiClipboard,
+    egui::{self, TextBuffer},
+};
 
 use crate::{
     engine::design_scale::DesignScale,
@@ -45,7 +48,27 @@ pub(super) fn show_unlocker(
             response.context_menu(|ui| {
                 if ui.button("Paste").clicked() {
                     if let Some(text) = clipboard.get_text() {
-                        *input = text;
+                        // Match egui's built-in Ctrl+V behavior: replace the current
+                        // selection (if any) and insert at the cursor, instead of
+                        // overwriting the whole field.
+                        let mut state =
+                            egui::TextEdit::load_state(ui.ctx(), response.id).unwrap_or_default();
+                        let cursor_range = state.cursor.char_range().unwrap_or_else(|| {
+                            egui::text::CCursorRange::one(egui::text::CCursor::new(
+                                input.chars().count(),
+                            ))
+                        });
+
+                        let mut ccursor = input.delete_selected(&cursor_range);
+                        let single_line = text.replace(['\r', '\n'], " ");
+                        input.insert_text_at(&mut ccursor, &single_line, usize::MAX);
+
+                        state
+                            .cursor
+                            .set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
+                        egui::TextEdit::store_state(ui.ctx(), response.id, state);
+
+                        ui.data_mut(|d| d.insert_temp(failed_id, false));
                     }
                     ui.close();
                 }

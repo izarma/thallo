@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, EguiPrimaryContextPass};
+use bevy_egui::{EguiContexts, EguiPrimaryContextPass, EguiTextureHandle, egui};
 
 use crate::{
     engine::{
@@ -14,6 +14,10 @@ use crate::{
 };
 
 const DISCLAIMER_VIDEO_PATH: &str = "assets/cutscenes/disclaimer.mp4";
+
+/// Marks the Act 2 break sound effect so the title card can wait for it to finish.
+#[derive(Component)]
+struct ActBreakSfx;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Menu::Startup), spawn_startup_video);
@@ -80,7 +84,11 @@ fn act_break_title(
     mut next_menu: ResMut<NextState<Menu>>,
     scale: Res<DesignScale>,
     state: Res<UnlockState>,
+    assets: Res<FileAssets>,
+    act_break_sfx: Query<(), With<ActBreakSfx>>,
 ) -> Result {
+    let act_transition_texture =
+        contexts.add_image(EguiTextureHandle::Weak(assets.act_transition.id()));
     let ctx = contexts.ctx_mut()?;
     match state.story.beat {
         StoryBeat::Act1Connecting => {
@@ -94,10 +102,16 @@ fn act_break_title(
             });
         }
         StoryBeat::Act2Sos => {
-            primitives::centered_panel(ctx, "act2_title", |ui| {
-                primitives::header(ui, "ACT II", &scale);
-                primitives::label(ui, "5 minutes before the catastrophe on Sunday", &scale);
-                if primitives::button(ui, "Power On", &scale).clicked() {
+            ctx.layer_painter(egui::LayerId::background()).image(
+                act_transition_texture,
+                ctx.content_rect(),
+                egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+
+            primitives::low_centered_panel(ctx, "act2_title", |ui| {
+                if act_break_sfx.is_empty() && primitives::button(ui, "Power On", &scale).clicked()
+                {
                     next_screen.set(Screen::Loading);
                     next_menu.set(Menu::None);
                 }
@@ -111,6 +125,6 @@ fn act_break_title(
 fn spawn_actbreak_sfx(mut cmd: Commands, assets: Res<FileAssets>, state: Res<UnlockState>) {
     if state.story.should_play_break_sfx() {
         info!("break sfx playing");
-        cmd.spawn(sound_effect(assets.tans_act.clone()));
+        cmd.spawn((sound_effect(assets.tans_act.clone()), ActBreakSfx));
     }
 }

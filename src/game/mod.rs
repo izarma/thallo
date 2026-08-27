@@ -25,7 +25,11 @@ pub struct FileAssets {
     #[dependency]
     pub omega: Handle<Image>,
     #[dependency]
+    pub act_transition: Handle<Image>,
+    #[dependency]
     pub ac1bg: Handle<AudioSource>,
+    #[dependency]
+    pub ac2bg: Handle<AudioSource>,
     #[dependency]
     pub tans_act: Handle<AudioSource>,
 }
@@ -35,7 +39,9 @@ impl FromWorld for FileAssets {
         let assets = world.resource::<AssetServer>();
         Self {
             omega: assets.load("game/act1/omega_r.png"),
+            act_transition: assets.load("game/act_transition.png"),
             ac1bg: assets.load("audio/ambience_act1.ogg"),
+            ac2bg: assets.load("audio/ambience_act2.ogg"),
             tans_act: assets.load("audio/transition_act1.ogg"),
         }
     }
@@ -51,7 +57,12 @@ fn setup_desktop_for_beat(
     music_query: Query<(), (With<Music>, With<DespawnOnExit<Screen>>)>,
 ) {
     if music_query.is_empty() {
-        cmd.spawn((music(assets.ac1bg.clone()), DespawnOnExit(Screen::Desktop)));
+        let track = if state.story.is_act2() {
+            assets.ac2bg.clone()
+        } else {
+            assets.ac1bg.clone()
+        };
+        cmd.spawn((music(track), DespawnOnExit(Screen::Desktop)));
     }
 
     cmd.queue(ApplyBeatCommand(state.story.beat));
