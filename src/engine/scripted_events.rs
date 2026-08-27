@@ -7,6 +7,7 @@ use crate::engine::{
     dialogue_runner::{DialogueLine, DialogueRunner, Dialogues, derive_state},
     screens::Screen,
     system_apps::{Applications, ChatBoxState, OpenAlertEvent, OpenAppEvent, SystemAlerts},
+    window_manager::OpenWindows,
 };
 use crate::game::beats::ApplyBeatCommand;
 
@@ -15,11 +16,14 @@ pub(super) fn plugin(app: &mut App) {
     app.init_resource::<FileDialogueTriggers>();
     app.init_resource::<Act2Timer>();
     app.add_observer(on_scripted_event);
-    app.add_observer(on_file_opened);
     app.add_systems(OnEnter(Screen::Desktop), schedule_open_chat);
     app.add_systems(
         Update,
-        (tick_delayed_events, check_dialogue_triggers)
+        (
+            tick_delayed_events,
+            check_dialogue_triggers,
+            flush_file_triggers,
+        )
             .in_set(CoreSystems::Logic)
             .run_if(in_state(Screen::Desktop)),
     );
@@ -29,7 +33,6 @@ pub(super) fn plugin(app: &mut App) {
 #[derive(Event, Clone, Debug, PartialEq)]
 pub enum ScriptedEventTrigger {
     OpenChat,
-    FileTrigger(String),
     ChatTrigger(ChatTriggerType),
     FileTransferComplete(NewFileReceiving),
     BeginReboot(RebootSequence),
@@ -207,7 +210,6 @@ fn on_scripted_event(
     ev: On<ScriptedEventTrigger>,
     mut state: ResMut<UnlockState>,
     mut cmd: Commands,
-    mut triggers: ResMut<FileDialogueTriggers>,
     mut dialogues: ResMut<Dialogues>,
     mut runner: ResMut<DialogueRunner>,
     mut next_screen: ResMut<NextState<Screen>>,
@@ -215,9 +217,6 @@ fn on_scripted_event(
     match ev.clone() {
         ScriptedEventTrigger::OpenChat => {
             effect_open_chat(&mut state, &mut runner, &dialogues, &mut cmd)
-        }
-        ScriptedEventTrigger::FileTrigger(name) => {
-            effect_file_trigger(name, &mut triggers, &mut dialogues, &mut cmd)
         }
         ScriptedEventTrigger::FileTransferComplete(recv) => {
             effect_file_transfer_complete(&mut state, recv)
@@ -248,10 +247,24 @@ pub struct DialogueTrigger {
     fired: bool,
 }
 
-#[derive(Resource, Default)]
+pub const FILE_TRIGGER_DELAY_SECONDS: f32 = 5.0;
+
+#[derive(Resource)]
 pub struct FileDialogueTriggers {
     pub triggers: Vec<DialogueTrigger>,
-    opened: HashSet<String>,
+    /// Cooldown that starts once the dialogue queue has run out and at least one
+    /// trigger's files are currently open. This keeps the 5-second delay after
+    /// the conversation finishes rather than when a file is first opened.
+    delay: Timer,
+}
+
+impl Default for FileDialogueTriggers {
+    fn default() -> Self {
+        Self {
+            triggers: Vec::new(),
+            delay: Timer::from_seconds(FILE_TRIGGER_DELAY_SECONDS, TimerMode::Once),
+        }
+    }
 }
 
 impl FileDialogueTriggers {
@@ -284,25 +297,29 @@ impl FileDialogueTriggers {
         });
     }
 
-    /// Remove every registered trigger and forget which files have been opened.
+    /// Remove every registered trigger and reset the delay timer.
     ///
     /// Called by [`apply_beat`](crate::game::beats::apply_beat) so rebuilding state
-    /// for a beat never leaks the previous beat's `opened` set.
+    /// for a beat never leaks the previous beat's file-open state.
     pub fn clear(&mut self) {
         self.triggers.clear();
-        self.opened.clear();
+        self.delay.reset();
     }
 
-    pub fn notify_opened(&mut self, name: &str) -> (Vec<DialogueLine>, Vec<ScriptedEventTrigger>) {
-        self.opened.insert(name.to_string());
-        let opened = &self.opened;
+    /// Evaluate triggers whose conditions are satisfied by the given set of
+    /// currently open files. Returns lines and events for triggers that fire,
+    /// and marks them fired so they only fire once.
+    pub fn flush_with_open(
+        &mut self,
+        open: &HashSet<String>,
+    ) -> (Vec<DialogueLine>, Vec<ScriptedEventTrigger>) {
         let mut lines = Vec::new();
         let mut events = Vec::new();
 
         for trigger in self.triggers.iter_mut().filter(|t| !t.fired) {
             let ready = match trigger.oper {
-                FileTriggerOperation::Any => trigger.files.iter().any(|f| opened.contains(f)),
-                FileTriggerOperation::All => trigger.files.iter().all(|f| opened.contains(f)),
+                FileTriggerOperation::Any => trigger.files.iter().any(|f| open.contains(f)),
+                FileTriggerOperation::All => trigger.files.iter().all(|f| open.contains(f)),
             };
             if ready {
                 trigger.fired = true;
@@ -334,22 +351,6 @@ fn effect_open_chat(
     }
 
     cmd.trigger(open_chatbox());
-}
-
-fn effect_file_trigger(
-    name: String,
-    triggers: &mut FileDialogueTriggers,
-    dialogues: &mut Dialogues,
-    cmd: &mut Commands,
-) {
-    let (new_lines, direct_events) = triggers.notify_opened(&name);
-    if !new_lines.is_empty() {
-        dialogues.add_lines(new_lines);
-        cmd.trigger(open_chatbox());
-    }
-    for ev in direct_events {
-        cmd.trigger(ev);
-    }
 }
 
 fn effect_open_file_transfer_alert(cmd: &mut Commands, recv: NewFileReceiving) {
@@ -476,20 +477,6 @@ fn tick_delayed_events(
     }
 }
 
-fn on_file_opened(ev: On<OpenAppEvent>, mut cmd: Commands) {
-    let is_file_app = matches!(
-        ev.app_type,
-        Applications::TextViewer { .. } | Applications::ImageViewer { .. }
-    );
-    if !is_file_app {
-        return;
-    }
-    cmd.spawn(DelayedEvent {
-        timer: Timer::from_seconds(5.0, TimerMode::Once),
-        event: ScriptedEventTrigger::FileTrigger(ev.name.clone()),
-    });
-}
-
 // Dialogues
 
 fn check_dialogue_triggers(
@@ -507,4 +494,63 @@ fn check_dialogue_triggers(
         }
     }
     *last_index = dialogues.index;
+}
+
+/// Flush file triggers once the dialogue queue has run out and the relevant
+/// files are currently open. The 5-second delay starts only when both
+/// conditions are true, so opening a file during dialogue and closing it before
+/// the chat finishes will not arm the trigger.
+fn flush_file_triggers(
+    open_windows: Res<OpenWindows>,
+    time: Res<Time>,
+    mut triggers: ResMut<FileDialogueTriggers>,
+    mut dialogues: ResMut<Dialogues>,
+    mut cmd: Commands,
+) {
+    let dialogue_finished = dialogues.lines.get(dialogues.index).is_none();
+    let open_files = currently_open_files(&open_windows);
+
+    let any_ready = triggers
+        .triggers
+        .iter()
+        .filter(|t| !t.fired)
+        .any(|t| match t.oper {
+            FileTriggerOperation::Any => t.files.iter().any(|f| open_files.contains(f)),
+            FileTriggerOperation::All => t.files.iter().all(|f| open_files.contains(f)),
+        });
+
+    if !dialogue_finished || !any_ready {
+        triggers.delay.reset();
+        return;
+    }
+
+    triggers.delay.tick(time.delta());
+    if !triggers.delay.just_finished() {
+        return;
+    }
+
+    let (new_lines, direct_events) = triggers.flush_with_open(&open_files);
+    triggers.delay.reset();
+    if !new_lines.is_empty() {
+        dialogues.add_lines(new_lines);
+        cmd.trigger(open_chatbox());
+    }
+    for ev in direct_events {
+        cmd.trigger(ev);
+    }
+}
+
+fn currently_open_files(open_windows: &OpenWindows) -> HashSet<String> {
+    open_windows
+        .windows
+        .iter()
+        .filter(|w| w.is_open)
+        .filter(|w| {
+            matches!(
+                w.event.app_type,
+                Applications::TextViewer { .. } | Applications::ImageViewer { .. }
+            )
+        })
+        .map(|w| w.event.name.clone())
+        .collect()
 }
