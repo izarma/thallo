@@ -7,7 +7,7 @@ use crate::{
         design_scale::DesignScale,
         screens::Screen,
         scripted_events::{StoryBeat, UnlockState},
-        video::{VideoPlayers, spawn_fullscreen_video},
+        video::{VideoAudioSource, VideoPlayers, spawn_fullscreen_video},
     },
     game::FileAssets,
     ui::{menus::Menu, theme::widgets::primitives},
@@ -31,14 +31,17 @@ pub(super) fn plugin(app: &mut App) {
 fn spawn_startup_video(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
+    mut audio_sources: ResMut<Assets<VideoAudioSource>>,
     mut players: NonSendMut<VideoPlayers>,
 ) {
     spawn_fullscreen_video(
         &mut commands,
         &mut images,
+        &mut audio_sources,
         &mut players,
         DISCLAIMER_VIDEO_PATH,
         true,
+        false,
         "StartupVideo",
         Menu::Startup,
     );

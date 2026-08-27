@@ -4,7 +4,9 @@ use bevy_egui::{EguiContexts, EguiPrimaryContextPass};
 use crate::{
     engine::{
         design_scale::DesignScale,
-        video::{VideoPlayer, VideoPlayers, cutscene_finished, spawn_fullscreen_video},
+        video::{
+            VideoAudioSource, VideoPlayer, VideoPlayers, cutscene_finished, spawn_fullscreen_video,
+        },
     },
     ui::{menus::Menu, theme::widgets::primitives},
 };
@@ -19,14 +21,17 @@ pub(super) fn plugin(app: &mut App) {
 fn spawn_win_video(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
+    mut audio_sources: ResMut<Assets<VideoAudioSource>>,
     mut players: NonSendMut<VideoPlayers>,
 ) {
     spawn_fullscreen_video(
         &mut commands,
         &mut images,
+        &mut audio_sources,
         &mut players,
         ENDING_VIDEO_PATH,
         false,
+        true,
         "WinVideo",
         Menu::Win,
     );

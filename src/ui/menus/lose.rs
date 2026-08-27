@@ -6,7 +6,9 @@ use crate::{
         design_scale::DesignScale,
         screens::Screen,
         scripted_events::StoryBeat,
-        video::{VideoPlayer, VideoPlayers, cutscene_finished, spawn_fullscreen_video},
+        video::{
+            VideoAudioSource, VideoPlayer, VideoPlayers, cutscene_finished, spawn_fullscreen_video,
+        },
     },
     game::beats::ApplyBeatCommand,
     ui::{menus::Menu, theme::widgets::primitives},
@@ -25,14 +27,17 @@ pub(super) fn plugin(app: &mut App) {
 fn spawn_lose_video(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
+    mut audio_sources: ResMut<Assets<VideoAudioSource>>,
     mut players: NonSendMut<VideoPlayers>,
 ) {
     spawn_fullscreen_video(
         &mut commands,
         &mut images,
+        &mut audio_sources,
         &mut players,
         DEATH_VIDEO_PATH,
         false,
+        true,
         "LoseVideo",
         Menu::Lose,
     );
