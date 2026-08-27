@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 
-mod actbreak;
 pub mod desktop;
+mod lose;
 mod shutdown;
 mod startup;
+mod win;
 
 pub(super) fn plugin(app: &mut App) {
     app.init_state::<Menu>();
@@ -11,7 +12,8 @@ pub(super) fn plugin(app: &mut App) {
         startup::plugin,
         shutdown::plugin,
         desktop::plugin,
-        actbreak::plugin,
+        win::plugin,
+        lose::plugin,
     ));
 }
 
@@ -21,8 +23,6 @@ pub enum Menu {
     None,
     Startup,
     ShutDown,
-    ConnectingSunday,
-    ConnectedSunday,
-    Act1Break,
-    Act2Startup,
+    Win,
+    Lose,
 }

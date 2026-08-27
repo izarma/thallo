@@ -163,8 +163,9 @@ fn handle_minigame_outcome(
                     ..
                 } if ev.game_type == MinigameType::NetRipper => {
                     if let Some(tries) = max_tries {
+                        println!("NetRipper: {tries} tries remaining.");
                         *tries = tries.saturating_sub(1);
-
+                        println!("NetRipper: {tries} tries remaining.");
                         if *tries == 0 {
                             info!("NetRipper max tries reached. Triggering Game Over!");
                             cmd.trigger(ScriptedEventTrigger::RipperFailed);

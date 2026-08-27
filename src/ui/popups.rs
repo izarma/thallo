@@ -9,7 +9,7 @@ use crate::{
         CoreSystems, UiPassSystems,
         design_scale::DesignScale,
         screens::{Screen, desktop::DesktopTextures},
-        scripted_events::{NewFileReceiving, UnlockState},
+        scripted_events::{NewFileReceiving, ScriptedEventTrigger},
         system_apps::{OpenAlertEvent, SystemAlerts},
     },
     ui::{
@@ -44,7 +44,7 @@ pub(super) fn plugin(app: &mut App) {
 fn show_popups(
     mut contexts: EguiContexts,
     mut open_alerts: ResMut<OpenAlerts>,
-    mut state: ResMut<UnlockState>,
+    mut cmd: Commands,
     textures: Res<DesktopTextures>,
     scale: Res<DesignScale>,
 ) -> Result {
@@ -155,10 +155,7 @@ fn show_popups(
             && let SystemAlerts::FileTransfer(download) = &entry.alert
             && entry.elapsed >= LOAD_DURATION
         {
-            match download {
-                NewFileReceiving::BruteForce => state.programs.bruteforce = true,
-                NewFileReceiving::NetRipper => state.programs.netripper = true,
-            }
+            cmd.trigger(ScriptedEventTrigger::FileTransferComplete(download.clone()));
         }
     }
 
@@ -177,6 +174,13 @@ struct AlertEntry {
 #[derive(Resource, Default)]
 pub struct OpenAlerts {
     alerts: Vec<AlertEntry>,
+}
+
+impl OpenAlerts {
+    /// Remove all active alerts. Used by [`crate::game::beats::apply_beat`].
+    pub fn clear(&mut self) {
+        self.alerts.clear();
+    }
 }
 
 fn on_open_alert(ev: On<OpenAlertEvent>, mut open_alerts: ResMut<OpenAlerts>) {

@@ -2,19 +2,21 @@ use bevy::{
     prelude::*,
     window::{CursorIcon, CustomCursor, CustomCursorImage},
 };
-use vleue_kinetoscope::{AnimatedImagePlugin, AnimationPlayed, StreamingAnimatedImageController};
 
 use crate::engine::{
     asset_tracking::ResourceHandles,
-    audio::sound_effect,
     screens::{
         Screen,
         desktop::{DesktopAssets, DesktopTextures},
     },
+    video::{
+        VideoAudioSource, VideoPlayer, VideoPlayers, cutscene_finished, spawn_fullscreen_video,
+    },
 };
 
+const BOOTUP_VIDEO_PATH: &str = "assets/cutscenes/bootup.mp4";
+
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(AnimatedImagePlugin);
     app.add_systems(OnEnter(Screen::Loading), spawn_startup);
     app.add_systems(
         Update,
@@ -26,11 +28,11 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
-#[derive(Component)]
-struct StartupAnimationFinished(bool);
-
 fn spawn_startup(
     mut cmd: Commands,
+    mut images: ResMut<Assets<Image>>,
+    mut audio_sources: ResMut<Assets<VideoAudioSource>>,
+    mut players: NonSendMut<VideoPlayers>,
     assets: Res<AssetServer>,
     window: Single<Entity, With<Window>>,
 ) {
@@ -39,26 +41,22 @@ fn spawn_startup(
             handle: assets.load("ui/cursors/cursor_loading.png"),
             ..default()
         })),));
-    cmd.spawn(sound_effect(assets.load("audio/sfx/bootup.ogg")));
-    cmd.spawn((
-        StreamingAnimatedImageController::play(assets.load("ui/startup.gif")),
-        DespawnOnEnter(Screen::Desktop),
-        StartupAnimationFinished(false),
-    ))
-    .observe(
-        |_: On<AnimationPlayed>, mut startup_anim: Single<&mut StartupAnimationFinished>| {
-            startup_anim.0 = true;
-        },
+    spawn_fullscreen_video(
+        &mut cmd,
+        &mut images,
+        &mut audio_sources,
+        &mut players,
+        BOOTUP_VIDEO_PATH,
+        false,
+        true,
+        "BootupVideo",
+        Screen::Loading,
     );
 }
 
-// checks if all assets are loaded and if the startup gif has finished playing
-fn is_startup_done(
-    resource_handles: Res<ResourceHandles>,
-    startup_anim: Query<&StartupAnimationFinished>,
-) -> bool {
-    let anim_finished = startup_anim.single().map(|f| f.0).unwrap_or(false);
-    resource_handles.is_all_done() && anim_finished
+// checks if all assets are loaded and if the bootup cutscene has finished playing
+fn is_startup_done(resource_handles: Res<ResourceHandles>, video: Query<&VideoPlayer>) -> bool {
+    resource_handles.is_all_done() && cutscene_finished(&video)
 }
 
 fn enter_desktop_screen(

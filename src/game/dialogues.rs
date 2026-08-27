@@ -116,14 +116,22 @@ pub(super) fn build_netconn_file_triggers(file_triggers: &mut FileDialogueTrigge
 pub(super) fn build_act2_dialogues() -> Dialogues {
     Dialogues {
         lines: vec![
-            DialogueLine::new(false, "Sending you NetRipper").on_complete(
+            DialogueLine::new(
+                false,
+                "OK, hope you can read these messages. You were compromised. We don’t have much time. Five or so minutes tops, so read carefully.",
+            ),
+            DialogueLine::new(false, "I’ve sent you a new program. Netripper. Bottom-left corner, open «Terminal» in the tab.").on_complete(
                 ScriptedEventTrigger::ChatTrigger(ChatTriggerType::FileTransfer(
                     NewFileReceiving::NetRipper,
                 )),
             ),
             DialogueLine::new(
                 false,
-                "Once you receive this program, try running it on the folder with your terminal",
+                "After that – navigate through the directories and launch said program on [SECURE]",
+            ),
+            DialogueLine::new(
+                false,
+                "This will send the folder back on Earth, hopefully.",
             ),
         ],
         index: 0,

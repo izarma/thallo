@@ -18,19 +18,19 @@ const COMMANDS: &[CommandDef] = &[
     CommandDef {
         name: "ls",
         args: "",
-        desc: "list contents of current or given directory",
+        desc: "list content of current/given directory",
         handler: cmd_ls,
     },
     CommandDef {
         name: "cd",
         args: "<dir>",
-        desc: "change directory (.. to go up, ~ for home)",
+        desc: "change directory",
         handler: cmd_cd,
     },
     CommandDef {
         name: "open",
         args: "<file>",
-        desc: "open a file or folder in a new window",
+        desc: "open a file or folder",
         handler: cmd_open,
     },
     CommandDef {
@@ -440,7 +440,7 @@ fn cmd_netripper(
                 name: node.name.clone(),
                 app_type: Applications::Ripper {
                     path: Some(target),
-                    max_tries: None,
+                    max_tries: Some(3),
                     elapsed: 0.0,
                     minigames_triggered: 0,
                     on_complete,

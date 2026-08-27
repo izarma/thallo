@@ -24,6 +24,28 @@ pub fn centered_panel(ctx: &egui::Context, id: &str, body: impl FnOnce(&mut egui
         });
 }
 
+/// Horizontally centred panel positioned 25% below the screen centre.
+pub fn low_centered_panel(ctx: &egui::Context, id: &str, body: impl FnOnce(&mut egui::Ui)) {
+    // consume the CentralPanel so egui doesn't complain about unused space
+    egui::CentralPanel::default()
+        .frame(egui::Frame::NONE)
+        .show(ctx, |_ui| {});
+
+    // egui screen co-ordinates have +y pointing down, so a positive y offset
+    // moves the panel lower on screen (25% of the screen height below centre).
+    let offset = egui::vec2(0.0, ctx.content_rect().height() * 0.25);
+
+    egui::Area::new(egui::Id::new(id))
+        .anchor(egui::Align2::CENTER_CENTER, offset)
+        .order(egui::Order::Foreground)
+        .show(ctx, |ui| {
+            ui.spacing_mut().item_spacing.y = 20.0;
+            ui.vertical_centered(|ui| {
+                body(ui);
+            });
+        });
+}
+
 /// A large header label (≈ 40 px).
 pub fn header(ui: &mut egui::Ui, text: impl Into<String>, scale: &DesignScale) {
     ui.label(

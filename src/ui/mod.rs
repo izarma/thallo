@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 mod apps;
 pub mod menus;
-mod popups;
+pub(crate) mod popups;
 pub mod theme;
 
 pub(super) fn plugin(app: &mut App) {

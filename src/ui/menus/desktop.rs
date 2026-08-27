@@ -10,6 +10,7 @@ use crate::{
             Screen,
             desktop::{DesktopAssets, DesktopTextures, IconTextures},
         },
+        scripted_events::Act2Timer,
         system_apps::{Applications, OpenAppEvent},
         window_manager::{CloseWindowEvent, OpenWindows, ToggleMinimizeEvent},
     },
@@ -167,6 +168,7 @@ fn show_task_bar(
     open_windows: Res<OpenWindows>,
     desktop_tex: Option<Res<DesktopTextures>>,
     scale: Res<DesignScale>,
+    act_timer: Res<Act2Timer>,
     mut cmd: Commands,
     mut state: ResMut<TaskBarState>,
     mut app_exit: MessageWriter<AppExit>,
@@ -373,6 +375,44 @@ fn show_task_bar(
                     });
                 });
         });
+
+    // Self-destruct countdown banner - pinned to the top-center of the screen.
+    if act_timer.active {
+        let remaining = act_timer.remaining.max(0.0);
+        let mins = (remaining / 60.0).floor() as u32;
+        let secs = (remaining % 60.0).floor() as u32;
+        let color = if remaining <= 60.0 {
+            egui::Color32::RED
+        } else {
+            egui::Color32::WHITE
+        };
+        egui::Area::new(egui::Id::new("self_destruct_banner"))
+            .order(egui::Order::Foreground)
+            .anchor(
+                egui::Align2::CENTER_TOP,
+                egui::vec2(0.0, scale.py(SYSTEM_FONT_SIZE)),
+            )
+            .interactable(false)
+            .show(ctx, |ui| {
+                egui::Frame::new()
+                    .fill(DEEP_RED_THEME)
+                    .inner_margin(egui::Margin::symmetric(
+                        (scale.x * 24.0) as i8,
+                        (scale.y * 8.0) as i8,
+                    ))
+                    .corner_radius(egui::CornerRadius::same(4))
+                    .stroke(egui::Stroke::new(1.0_f32, egui::Color32::WHITE))
+                    .show(ui, |ui| {
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "Self Destruct imminent in: {mins:02}:{secs:02}"
+                            ))
+                            .size(font_size)
+                            .color(color),
+                        );
+                    });
+            });
+    }
     Ok(())
 }
 
