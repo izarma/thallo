@@ -197,6 +197,9 @@ jobs:
           fi
           if [ '${{ env.needs_windows_cross }}' = '1' ]; then
             echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc" >> "${GITHUB_ENV}"
+            # Point `ffmpeg-sys-next` at the prebuilt Windows FFmpeg (headers,
+            # mingw import libs, and runtime DLLs) baked into the CI image.
+            echo "FFMPEG_DIR=/opt/ffmpeg-win64" >> "${GITHUB_ENV}"
           fi
 
       - name: Build and add binaries to app
@@ -210,6 +213,10 @@ jobs:
       - name: Add assets to app
         if: ${{ env.is_platform_enabled == 'true' }}
         run: cp -R ./'${{ env.assets_path }}' '${{ env.app }}' || true # Ignore error if assets folder does not exist.
+
+      - name: Add FFmpeg DLLs to app (Windows)
+        if: ${{ env.is_platform_enabled == 'true' && matrix.platform == 'windows' }}
+        run: cp /opt/ffmpeg-win64/bin/av*.dll /opt/ffmpeg-win64/bin/sw*.dll '${{ env.app }}/'
 
       - name: Package app
         if: ${{ env.is_platform_enabled == 'true' }}
