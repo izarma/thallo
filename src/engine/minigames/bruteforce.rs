@@ -3,7 +3,7 @@ use crate::{
         design_scale::DesignScale,
         minigames::{ActiveMinigame, Minigame, MinigameOutcome, MinigameTextures, MinigameType},
     },
-    ui::theme::palette::{DEEP_RED_THEME, RED_CONTRAST_THEME},
+    ui::theme::palette::RED_CONTRAST_THEME,
 };
 use bevy::prelude::*;
 use bevy_egui::egui;
