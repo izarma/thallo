@@ -27,6 +27,10 @@ pub struct FileAssets {
     #[dependency]
     pub act_transition: Handle<Image>,
     #[dependency]
+    pub lose: Handle<Image>,
+    #[dependency]
+    pub win: Handle<Image>,
+    #[dependency]
     pub ac1bg: Handle<AudioSource>,
     #[dependency]
     pub ac2bg: Handle<AudioSource>,
@@ -40,6 +44,8 @@ impl FromWorld for FileAssets {
         Self {
             omega: assets.load("game/act1/omega_r.png"),
             act_transition: assets.load("game/act_transition.png"),
+            lose: assets.load("game/lose.png"),
+            win: assets.load("game/win.png"),
             ac1bg: assets.load("audio/ambience_act1.ogg"),
             ac2bg: assets.load("audio/ambience_act2.ogg"),
             tans_act: assets.load("audio/transition_act1.ogg"),
