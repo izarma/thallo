@@ -9,6 +9,7 @@ use crate::{
 pub mod ascii_animation;
 pub mod asset_tracking;
 pub mod audio;
+pub mod cursor;
 pub mod design_scale;
 pub mod dialogue_runner;
 pub mod file_system;
@@ -37,6 +38,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_plugins((
         asset_tracking::plugin,
         audio::plugin,
+        cursor::plugin,
         screens::plugin,
         design_scale::plugin,
         window_manager::plugin,

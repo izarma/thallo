@@ -1,12 +1,12 @@
 use bevy::{
     log::LogPlugin,
     prelude::*,
-    window::{CursorIcon, CustomCursor, CustomCursorImage, WindowMode},
+    window::{CursorOptions, WindowMode},
 };
 use bevy_egui::{EguiGlobalSettings, EguiPlugin};
 use tracing::Level;
 
-use crate::engine::post_processing::PostProcessSettings;
+use crate::engine::{cursor::CurrentCursor, post_processing::PostProcessSettings};
 
 #[cfg(feature = "dev")]
 mod devtools;
@@ -74,12 +74,15 @@ fn spawn_cursor(
     window: Single<Entity, With<Window>>,
     assets: Res<AssetServer>,
     mut egui_global: ResMut<EguiGlobalSettings>,
+    mut current: ResMut<CurrentCursor>,
 ) {
-    //disables egui messing with cursor
+    // disables egui messing with cursor
     egui_global.enable_cursor_icon_updates = false;
-    cmd.entity(*window)
-        .insert((CursorIcon::Custom(CustomCursor::Image(CustomCursorImage {
-            handle: assets.load("ui/cursors/cursor.png"),
-            ..default()
-        })),));
+    // hide the OS cursor; we render the cursor ourselves so post-processing applies
+    cmd.entity(*window).insert(CursorOptions {
+        visible: false,
+        ..default()
+    });
+
+    current.handle = assets.load("ui/cursors/cursor.png");
 }
