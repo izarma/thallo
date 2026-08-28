@@ -7,7 +7,9 @@ use crate::engine::{
     audio::sound_effect,
     design_scale::DesignScale,
     minigames::{
-        bruteforce::{BruteForceState, render_bruteforce, update_bruteforce_logic},
+        bruteforce::{
+            BruteForceConfigBag, BruteForceState, render_bruteforce, update_bruteforce_logic,
+        },
         netripper::{NetRipperState, render_netripper, update_netripper_logic},
     },
     screens::Screen,
@@ -22,6 +24,7 @@ mod netripper;
 pub(super) fn plugin(app: &mut App) {
     app.load_resource::<MinigameAssets>()
         .init_resource::<ActiveMinigame>()
+        .init_resource::<BruteForceConfigBag>()
         .add_observer(on_minigame_trigger)
         .add_systems(
             EguiPrimaryContextPass,
@@ -71,17 +74,16 @@ pub struct MinigameOutcome {
     pub success: bool,
 }
 
-fn on_minigame_trigger(ev: On<MinigameTrigger>, mut state: ResMut<ActiveMinigame>) {
+fn on_minigame_trigger(
+    ev: On<MinigameTrigger>,
+    mut state: ResMut<ActiveMinigame>,
+    mut bruteforce_configs: ResMut<BruteForceConfigBag>,
+) {
     if state.0.is_none() {
         state.0 = Some(match ev.game_type {
-            MinigameType::BruteForce => Minigame::BruteForce(BruteForceState {
-                filled_slots: [false; 8],
-                current_angle: 0.0,
-                speed: 2.0,
-                missed_timer: 0.0,
-                miss_count: 0,
-                failed: false,
-            }),
+            MinigameType::BruteForce => {
+                Minigame::BruteForce(BruteForceState::new_random(&mut bruteforce_configs))
+            }
             MinigameType::NetRipper => Minigame::NetRipper(NetRipperState::new_random()),
         });
     }

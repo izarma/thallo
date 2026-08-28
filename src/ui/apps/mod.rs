@@ -66,11 +66,11 @@ pub(super) fn plugin(app: &mut App) {
             .in_set(UiPassSystems::Render),
     );
     app.add_plugins(JsonAssetPlugin::<AsciiAnimation>::new(&["json"]));
-    let rain_drops_handle = app
+    let asnet3_handle = app
         .world_mut()
         .resource::<AssetServer>()
-        .load("rain_drops_ascii.json");
-    app.insert_resource(RipperAsciiAnimationHandle(rain_drops_handle));
+        .load("asnet3.json");
+    app.insert_resource(RipperAsciiAnimationHandle(asnet3_handle));
     let rotating_thing_handle = app
         .world_mut()
         .resource::<AssetServer>()

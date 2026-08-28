@@ -1,21 +1,102 @@
-use crate::engine::{
-    design_scale::DesignScale,
-    minigames::{ActiveMinigame, Minigame, MinigameOutcome, MinigameTextures, MinigameType},
+use crate::{
+    engine::{
+        design_scale::DesignScale,
+        minigames::{ActiveMinigame, Minigame, MinigameOutcome, MinigameTextures, MinigameType},
+    },
+    ui::theme::palette::RED_CONTRAST_THEME,
 };
 use bevy::prelude::*;
 use bevy_egui::egui;
-use std::f32::consts::TAU;
+use rand::seq::SliceRandom;
+use std::f32::consts::{FRAC_PI_2, TAU};
 
-pub struct BruteForceState {
-    pub filled_slots: [bool; 8],
-    pub current_angle: f32,
-    pub speed: f32,        // Radians per second
-    pub missed_timer: f32, // Time remaining for the "red" flash
-    pub miss_count: u8,
-    pub failed: bool,
+const SLOT_COUNT: usize = 8;
+const MAX_MISSES: u8 = 10;
+const NORTH_ANGLE: f32 = -FRAC_PI_2;
+
+// Notches are numbered clockwise from north. Every configuration must contain each notch once.
+const BRUTEFORCE_CONFIGS: &[&[&[usize]]] = &[
+    &[&[0, 1, 2], &[4, 5, 6], &[3, 7]],
+    &[&[0, 3, 4], &[1, 5, 6], &[2, 7]],
+    &[&[0, 2, 4, 6], &[1, 3, 5, 7]],
+    &[&[0, 4], &[1, 5], &[2, 6], &[3, 7]],
+    &[&[0, 1, 7], &[2, 3], &[4, 5, 6]],
+];
+
+#[derive(Resource, Default)]
+pub(super) struct BruteForceConfigBag {
+    remaining: Vec<usize>,
+    last_drawn: Option<usize>,
 }
 
-const MAX_MISSES: u8 = 10;
+impl BruteForceConfigBag {
+    fn draw(&mut self, rng: &mut impl rand::Rng) -> usize {
+        if self.remaining.is_empty() {
+            self.remaining = (0..BRUTEFORCE_CONFIGS.len()).collect();
+            self.remaining.shuffle(rng);
+
+            // Avoid repeating the previous bag's final config immediately after a refill.
+            if self.remaining.len() > 1 && self.remaining.last() == self.last_drawn.as_ref() {
+                self.remaining.swap(0, BRUTEFORCE_CONFIGS.len() - 1);
+            }
+        }
+
+        let drawn = self
+            .remaining
+            .pop()
+            .expect("bruteforce configs are not empty");
+        self.last_drawn = Some(drawn);
+        drawn
+    }
+}
+
+pub struct BruteForceState {
+    filled_slots: [bool; SLOT_COUNT],
+    active_sets: Vec<Vec<usize>>,
+    current_set: usize,
+    current_angle: f32,
+    speed: f32,        // Radians per second
+    missed_timer: f32, // Time remaining for the "red" flash
+    miss_count: u8,
+    failed: bool,
+}
+
+impl BruteForceState {
+    pub(super) fn new_random(config_bag: &mut BruteForceConfigBag) -> Self {
+        let mut rng = rand::rng();
+        let config_index = config_bag.draw(&mut rng);
+        let mut active_sets: Vec<Vec<usize>> = BRUTEFORCE_CONFIGS[config_index]
+            .iter()
+            .map(|set| set.to_vec())
+            .collect();
+        active_sets.shuffle(&mut rng);
+
+        Self {
+            filled_slots: [false; SLOT_COUNT],
+            active_sets,
+            current_set: 0,
+            current_angle: NORTH_ANGLE,
+            speed: 2.0,
+            missed_timer: 0.0,
+            miss_count: 0,
+            failed: false,
+        }
+    }
+
+    fn is_open(&self, slot: usize) -> bool {
+        self.active_sets[self.current_set].contains(&slot)
+    }
+
+    fn current_set_complete(&self) -> bool {
+        self.active_sets[self.current_set]
+            .iter()
+            .all(|&slot| self.filled_slots[slot])
+    }
+}
+
+fn notch_angle(index: usize) -> f32 {
+    NORTH_ANGLE + (index as f32) * (TAU / SLOT_COUNT as f32)
+}
 
 pub(super) fn render_bruteforce(
     ctx: &egui::Context,
@@ -58,6 +139,25 @@ pub(super) fn render_bruteforce(
                 egui::Color32::WHITE,
             );
 
+            // Highlight only the notches that are open in the current set.
+            for &slot in &state.active_sets[state.current_set] {
+                if !state.filled_slots[slot] {
+                    let angle = notch_angle(slot);
+                    let pos =
+                        center + egui::vec2(angle.cos() * orbit_radius, angle.sin() * orbit_radius);
+                    painter.circle_filled(
+                        pos,
+                        8.0 * scale.uniform() * display_scale,
+                        RED_CONTRAST_THEME,
+                    );
+                    painter.circle_stroke(
+                        pos,
+                        12.0 * scale.uniform() * display_scale,
+                        egui::Stroke::new(2.0 * scale.uniform(), RED_CONTRAST_THEME),
+                    );
+                }
+            }
+
             let mut draw_lock_at_angle = |angle: f32, is_filled: bool, is_active: bool| {
                 // Calculate position on the circle
                 let pos =
@@ -94,8 +194,7 @@ pub(super) fn render_bruteforce(
             // Draw all previously filled notches
             for (i, &is_filled) in state.filled_slots.iter().enumerate() {
                 if is_filled {
-                    let angle = (i as f32) * (TAU / 8.0);
-                    draw_lock_at_angle(angle, true, false);
+                    draw_lock_at_angle(notch_angle(i), true, false);
                 }
             }
 
@@ -120,20 +219,19 @@ pub(super) fn update_bruteforce_logic(
     }
 
     // Move the lock
-    state.current_angle += state.speed * time.delta_secs();
-    state.current_angle %= TAU;
+    state.current_angle = (state.current_angle + state.speed * time.delta_secs()).rem_euclid(TAU);
 
     // Handle input
     if keys.just_pressed(KeyCode::Space) || mouse.just_pressed(MouseButton::Left) {
-        let total_slots = 8.0;
-        let slot_angle = TAU / total_slots;
-        let margin = 0.25; // Tolerance in radians (adjust for difficulty)
+        let slot_angle = TAU / SLOT_COUNT as f32;
+        let margin = 0.125; // Tolerance in radians (adjust for difficulty)
 
         let normalized = state.current_angle.rem_euclid(TAU);
 
-        // Find the index of the closest notch
-        let closest_idx = (normalized / slot_angle).round() as usize % 8;
-        let target_angle = (closest_idx as f32) * slot_angle;
+        // Notches are indexed clockwise from north.
+        let closest_idx =
+            ((normalized - NORTH_ANGLE).rem_euclid(TAU) / slot_angle).round() as usize % SLOT_COUNT;
+        let target_angle = notch_angle(closest_idx).rem_euclid(TAU);
 
         // Calculate shortest angular distance
         let mut diff = (normalized - target_angle).abs();
@@ -141,34 +239,25 @@ pub(super) fn update_bruteforce_logic(
             diff = TAU - diff;
         }
 
-        if diff <= margin {
-            // Capture the state before toggling for logic checks
-            let was_filled = state.filled_slots[closest_idx];
+        if diff <= margin && state.is_open(closest_idx) && !state.filled_slots[closest_idx] {
+            state.filled_slots[closest_idx] = true;
+            state.speed = -state.speed.signum() * (state.speed.abs() + 0.3);
 
-            // TOGGLE: This fills it if empty, and deselects it if already filled.
-            state.filled_slots[closest_idx] = !was_filled;
-            if was_filled {
-                state.missed_timer = 0.5;
-                state.miss_count += 1;
-            }
-
-            // REVERSE & SPEED UP
-            // If it was a deselection (was_filled == true), maybe don't speed up as much.
-            let speed_inc = if was_filled { 0.1 } else { 0.3 };
-            state.speed = -state.speed.signum() * (state.speed.abs() + speed_inc);
-
-            // Check Win Condition
-            // We only win if all slots are filled (meaning we didn't just deselect one)
-            if state.filled_slots.iter().all(|&f| f) {
-                info!("Hacked successfully!");
-                cmd.trigger(MinigameOutcome {
-                    game_type: MinigameType::BruteForce,
-                    success: true,
-                });
-                clear_active = true;
+            if state.current_set_complete() {
+                if state.current_set + 1 == state.active_sets.len() {
+                    info!("Hacked successfully!");
+                    cmd.trigger(MinigameOutcome {
+                        game_type: MinigameType::BruteForce,
+                        success: true,
+                    });
+                    clear_active = true;
+                } else {
+                    // Draw the next set from this run's already-shuffled set bag.
+                    state.current_set += 1;
+                }
             }
         } else {
-            // Penalty for missing completely (click outside margin)
+            // Missing a notch or choosing one that is not currently open is a mistake.
             state.missed_timer = 0.2;
             state.miss_count += 1;
             state.speed = -state.speed;
