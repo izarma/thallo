@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, EguiPrimaryContextPass};
+use bevy_egui::{EguiContexts, EguiPrimaryContextPass, EguiTextureHandle, egui};
 
 use crate::{
     engine::{
@@ -10,7 +10,7 @@ use crate::{
             VideoAudioSource, VideoPlayer, VideoPlayers, cutscene_finished, spawn_fullscreen_video,
         },
     },
-    game::beats::ApplyBeatCommand,
+    game::{FileAssets, beats::ApplyBeatCommand},
     ui::{
         menus::Menu,
         theme::{button_textures::ButtonTextures, widgets::primitives},
@@ -55,8 +55,10 @@ fn lose_menu(
     mut app_exit: MessageWriter<AppExit>,
     video: Query<&VideoPlayer>,
     button_textures: Option<Res<ButtonTextures>>,
+    assets: Res<FileAssets>,
 ) -> Result {
     let button_texture = button_textures.as_deref().map(|t| t.button);
+    let background = contexts.add_image(EguiTextureHandle::Weak(assets.lose.id()));
     let ctx = contexts.ctx_mut()?;
 
     // Hide the menu until the death cutscene has finished playing.
@@ -64,13 +66,14 @@ fn lose_menu(
         return Ok(());
     }
 
-    primitives::centered_panel(ctx, "lose_menu", |ui| {
-        primitives::header(ui, "CONNECTION LOST", &scale);
-        primitives::label(
-            ui,
-            "The catastrophe arrived before you could send the SOS.",
-            &scale,
-        );
+    ctx.layer_painter(egui::LayerId::background()).image(
+        background,
+        ctx.content_rect(),
+        egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
+        egui::Color32::WHITE,
+    );
+
+    primitives::low_centered_panel(ctx, "lose_menu", |ui| {
         if primitives::button(ui, "Retry", &scale, button_texture).clicked() {
             // Rebuild a clean Act 2 and boot straight back to the desktop,
             // skipping the ActBreak -> Title -> Act2Startup title card.
