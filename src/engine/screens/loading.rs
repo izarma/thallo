@@ -1,10 +1,8 @@
-use bevy::{
-    prelude::*,
-    window::{CursorIcon, CustomCursor, CustomCursorImage},
-};
+use bevy::prelude::*;
 
 use crate::engine::{
     asset_tracking::ResourceHandles,
+    cursor::CurrentCursor,
     screens::{
         Screen,
         desktop::{DesktopAssets, DesktopTextures},
@@ -34,13 +32,9 @@ fn spawn_startup(
     mut audio_sources: ResMut<Assets<VideoAudioSource>>,
     mut players: NonSendMut<VideoPlayers>,
     assets: Res<AssetServer>,
-    window: Single<Entity, With<Window>>,
+    mut current: ResMut<CurrentCursor>,
 ) {
-    cmd.entity(*window)
-        .insert((CursorIcon::Custom(CustomCursor::Image(CustomCursorImage {
-            handle: assets.load("ui/cursors/cursor_loading.png"),
-            ..default()
-        })),));
+    current.handle = assets.load("ui/cursors/cursor_loading.png");
     spawn_fullscreen_video(
         &mut cmd,
         &mut images,
@@ -61,15 +55,10 @@ fn is_startup_done(resource_handles: Res<ResourceHandles>, video: Query<&VideoPl
 
 fn enter_desktop_screen(
     mut next_screen: ResMut<NextState<Screen>>,
-    mut cmd: Commands,
-    window: Single<Entity, With<Window>>,
+    mut current: ResMut<CurrentCursor>,
     d_ass: Res<DesktopAssets>,
 ) {
     info!("Entering desktop screen");
     next_screen.set(Screen::Desktop);
-    cmd.entity(*window)
-        .insert((CursorIcon::Custom(CustomCursor::Image(CustomCursorImage {
-            handle: d_ass.main_cursor.clone(),
-            ..default()
-        })),));
+    current.handle = d_ass.main_cursor.clone();
 }
