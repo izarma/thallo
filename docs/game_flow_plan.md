@@ -43,9 +43,10 @@ depends on narrative position:
    - `Win` / `Lose`: fully-progressed Act 1 filesystem (desktop is never shown).
 3. **Dialogues + runner** — fresh `Dialogues` and a cleared `DialogueRunner`.
 4. **File dialogue triggers** — `FileDialogueTriggers::clear()` wipes
-   `triggers`, `opened`, `pending`, and the `delay` timer, then the beat's
-   triggers are rebuilt. Triggers evaluate only after the chat has been idle
-   for `FILE_TRIGGER_DELAY_SECONDS`.
+   `triggers`, `opened`, and the `delay` timer, then the beat's triggers are
+   rebuilt. Triggers evaluate against the cumulative `opened` set (files opened
+   at least once, not necessarily simultaneously), and only after the chat has
+   been idle for `FILE_TRIGGER_DELAY_SECONDS`.
 5. **Act 2 timer** — active only for `Act2Sos`, reset to `ACT2_TIME_LIMIT`.
 6. **Transient UI / game state** — `OpenWindows`, `OpenAlerts`, `ActiveMinigame`,
    and `Pause` are all reset.
@@ -125,13 +126,18 @@ flowchart TD
 | **Retry** in lose menu | `lose_menu` | `apply_beat(Act2Sos)` → `Screen::Loading` |
 | **Dev panel button** | `beat_jump_panel` | `apply_beat(beat)` + `Screen::Desktop` (or win/lose trigger) |
 
+> File triggers fire once their listed files have each been **opened at least
+> once** during the beat (tracked in the cumulative `opened` set) and the chat
+> has been idle for `FILE_TRIGGER_DELAY_SECONDS`. Files do not need to remain
+> open at the same time.
+
 ---
 
 ## 5. Key files and types
 
 | File | Role |
 |---|---|
-| `src/engine/scripted_events.rs` | `StoryBeat`, `StoryProgress`, `UnlockState`, `ScriptedEventTrigger`, `FileDialogueTriggers` (now defers evaluation until `DialogueRunner` is idle). |
+| `src/engine/scripted_events.rs` | `StoryBeat`, `StoryProgress`, `UnlockState`, `ScriptedEventTrigger`, `FileDialogueTriggers` (tracks a cumulative `opened` set and defers evaluation until `DialogueRunner` is idle). |
 | `src/game/beats.rs` | `apply_beat(world, beat)`, `ApplyBeatCommand`, per-beat dialogue/trigger dispatch. |
 | `src/game/files.rs` | `build_fs_for_beat(beat)` and the canonical Act 1 / `[SECURE]` / Act 2 builders. |
 | `src/game/mod.rs` | `setup_desktop_for_beat`: single `OnEnter(Desktop)` system that queues `ApplyBeatCommand`. |

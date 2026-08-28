@@ -10,7 +10,10 @@ use crate::{
         video::{VideoAudioSource, VideoPlayers, spawn_fullscreen_video},
     },
     game::FileAssets,
-    ui::{menus::Menu, theme::widgets::primitives},
+    ui::{
+        menus::Menu,
+        theme::{button_textures::ButtonTextures, widgets::primitives},
+    },
 };
 
 const DISCLAIMER_VIDEO_PATH: &str = "assets/cutscenes/disclaimer.mp4";
@@ -56,18 +59,20 @@ fn startup_ui(
     mut next_screen: ResMut<NextState<Screen>>,
     mut next_menu: ResMut<NextState<Menu>>,
     scale: Res<DesignScale>,
+    button_textures: Option<Res<ButtonTextures>>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
+    let button_texture = button_textures.as_deref().map(|t| t.button);
 
-    primitives::low_centered_panel(ctx, "startup_menu", |ui| {
+    primitives::startup_panel(ctx, "startup_menu", |ui| {
         ui.style_mut().interaction.selectable_labels = false;
 
-        if primitives::button(ui, "Yes", &scale).clicked() {
+        if primitives::button(ui, "Yes", &scale, button_texture).clicked() {
             info!("enter load - yes click");
             next_screen.set(Screen::Loading);
         }
 
-        if primitives::button(ui, "No", &scale).clicked() {
+        if primitives::button(ui, "No", &scale, button_texture).clicked() {
             next_menu.set(Menu::ShutDown);
         }
     });
@@ -86,16 +91,18 @@ fn act_break_title(
     state: Res<UnlockState>,
     assets: Res<FileAssets>,
     act_break_sfx: Query<(), With<ActBreakSfx>>,
+    button_textures: Option<Res<ButtonTextures>>,
 ) -> Result {
     let act_transition_texture =
         contexts.add_image(EguiTextureHandle::Weak(assets.act_transition.id()));
+    let button_texture = button_textures.as_deref().map(|t| t.button);
     let ctx = contexts.ctx_mut()?;
     match state.story.beat {
         StoryBeat::Act1Connecting => {
             primitives::centered_panel(ctx, "reconnect_menu", |ui| {
                 primitives::header(ui, "SUNDAY NETWORK", &scale);
                 primitives::label(ui, "Terminal reconnected. Incoming sync detected.", &scale);
-                if primitives::button(ui, "Connect", &scale).clicked() {
+                if primitives::button(ui, "Connect", &scale, button_texture).clicked() {
                     next_screen.set(Screen::Loading);
                     next_menu.set(Menu::None);
                 }
@@ -110,7 +117,8 @@ fn act_break_title(
             );
 
             primitives::low_centered_panel(ctx, "act2_title", |ui| {
-                if act_break_sfx.is_empty() && primitives::button(ui, "Power On", &scale).clicked()
+                if act_break_sfx.is_empty()
+                    && primitives::button(ui, "Power On", &scale, button_texture).clicked()
                 {
                     next_screen.set(Screen::Loading);
                     next_menu.set(Menu::None);

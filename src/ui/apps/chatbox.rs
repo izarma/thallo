@@ -8,9 +8,9 @@ use crate::{
         dialogue_runner::{DialogueLine, DialogueRunner, Dialogues, derive_state},
         system_apps::ChatBoxState,
     },
-    ui::theme::palette::{
-        CHATBOX_ANON, CONTENT_FONT_SIZE, DEEP_RED_THEME, FONT_CHAT, FONT_CHAT_SM, LABEL_COLOR,
-        LABEL_META, RED_CONTRAST_THEME,
+    ui::theme::{
+        palette::{CHATBOX_ANON, DEEP_RED_THEME, FONT_CHAT, FONT_CHAT_SM, LABEL_COLOR, LABEL_META},
+        widgets::primitives,
     },
 };
 
@@ -25,15 +25,13 @@ const STATUS_MARGIN: f32 = 20.0;
 /// Width of the right contact-panel sidebar (logo area).
 const SIDEBAR_RATIO: f32 = 0.288;
 
-const SEND_BUTTON_HEIGHT: f32 = 48.0;
-const SEND_BUTTON_WIDTH: f32 = 120.0;
-
 pub fn show_chatbox(
     ui: &mut egui::Ui,
     runner: &mut DialogueRunner,
     dialogues: &mut Dialogues,
     scale: &DesignScale,
     is_focused: bool,
+    button_texture: Option<egui::TextureId>,
 ) -> bool {
     let total = ui.max_rect();
     let chat_w = total.width() * (1.0 - SIDEBAR_RATIO);
@@ -51,7 +49,15 @@ pub fn show_chatbox(
     );
     handle_player_input(runner, dialogues, ui.ctx(), is_focused);
     render_messages(ui, msg_rect, &runner.displayed, &runner.state, scale);
-    render_status_bar(ui, status_rect, runner, dialogues, scale, is_focused)
+    render_status_bar(
+        ui,
+        status_rect,
+        runner,
+        dialogues,
+        scale,
+        is_focused,
+        button_texture,
+    )
 }
 
 // State machine
@@ -158,6 +164,7 @@ fn render_status_bar(
     dialogues: &Dialogues,
     scale: &DesignScale,
     is_focused: bool,
+    button_texture: Option<egui::TextureId>,
 ) -> bool {
     let mut send = false;
     let font = FontId::proportional(scale.py(FONT_CHAT_SM));
@@ -221,15 +228,7 @@ fn render_status_bar(
             ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
                 let send_clicked = ui
                     .add_enabled_ui(ready_to_send, |ui| {
-                        ui.add_sized(
-                            scale.px(SEND_BUTTON_WIDTH, SEND_BUTTON_HEIGHT),
-                            egui::Button::new(
-                                RichText::new("Send")
-                                    .size(scale.py(CONTENT_FONT_SIZE))
-                                    .color(RED_CONTRAST_THEME)
-                                    .strong(),
-                            ),
-                        )
+                        primitives::button(ui, "Send", scale, button_texture)
                     })
                     .inner // Extract the response from the inner Ui
                     .clicked();

@@ -200,6 +200,11 @@ jobs:
             # Point `ffmpeg-sys-next` at the prebuilt Windows FFmpeg (headers,
             # mingw import libs, and runtime DLLs) baked into the CI image.
             echo "FFMPEG_DIR=/opt/ffmpeg-win64" >> "${GITHUB_ENV}"
+            if [ ! -f /opt/ffmpeg-win64/include/libavcodec/avcodec.h ]; then
+              echo "ERROR: Windows FFmpeg bundle missing from CI image (/opt/ffmpeg-win64)." >&2
+              echo "Rebuild and redeploy the CI image (ci-image/build.sh) before building for Windows." >&2
+              exit 1
+            fi
           fi
 
       - name: Build and add binaries to app

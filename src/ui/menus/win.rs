@@ -8,7 +8,10 @@ use crate::{
             VideoAudioSource, VideoPlayer, VideoPlayers, cutscene_finished, spawn_fullscreen_video,
         },
     },
-    ui::{menus::Menu, theme::widgets::primitives},
+    ui::{
+        menus::Menu,
+        theme::{button_textures::ButtonTextures, widgets::primitives},
+    },
 };
 
 const ENDING_VIDEO_PATH: &str = "assets/cutscenes/thallo_ending.mp4";
@@ -42,7 +45,9 @@ fn win_menu(
     scale: Res<DesignScale>,
     mut app_exit: MessageWriter<AppExit>,
     video: Query<&VideoPlayer>,
+    button_textures: Option<Res<ButtonTextures>>,
 ) -> Result {
+    let button_texture = button_textures.as_deref().map(|t| t.button);
     let ctx = contexts.ctx_mut()?;
 
     // Hide the menu until the ending cutscene has finished playing.
@@ -53,7 +58,7 @@ fn win_menu(
     primitives::centered_panel(ctx, "win_menu", |ui| {
         primitives::header(ui, "TRANSMISSION RECEIVED", &scale);
         primitives::label(ui, "something something", &scale);
-        if primitives::button(ui, "Quit", &scale).clicked() {
+        if primitives::button(ui, "Quit", &scale, button_texture).clicked() {
             app_exit.write(AppExit::Success);
         }
     });

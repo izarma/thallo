@@ -247,8 +247,12 @@ pub const FILE_TRIGGER_DELAY_SECONDS: f32 = 5.0;
 #[derive(Resource)]
 pub struct FileDialogueTriggers {
     pub triggers: Vec<DialogueTrigger>,
+    /// Files opened at least once during the current beat. Triggers evaluate
+    /// against this cumulative set, so a file still counts after its window is
+    /// closed — players don't have to keep every file open at once.
+    opened: HashSet<String>,
     /// Cooldown that starts once the dialogue queue has run out and at least one
-    /// trigger's files are currently open. This keeps the 5-second delay after
+    /// trigger's files have all been opened. This keeps the 5-second delay after
     /// the conversation finishes rather than when a file is first opened.
     delay: Timer,
 }
@@ -257,6 +261,7 @@ impl Default for FileDialogueTriggers {
     fn default() -> Self {
         Self {
             triggers: Vec::new(),
+            opened: HashSet::new(),
             delay: Timer::from_seconds(FILE_TRIGGER_DELAY_SECONDS, TimerMode::Once),
         }
     }
@@ -298,23 +303,34 @@ impl FileDialogueTriggers {
     /// for a beat never leaks the previous beat's file-open state.
     pub fn clear(&mut self) {
         self.triggers.clear();
+        self.opened.clear();
         self.delay.reset();
     }
 
-    /// Evaluate triggers whose conditions are satisfied by the given set of
-    /// currently open files. Returns lines and events for triggers that fire,
-    /// and marks them fired so they only fire once.
-    pub fn flush_with_open(
-        &mut self,
-        open: &HashSet<String>,
-    ) -> (Vec<DialogueLine>, Vec<ScriptedEventTrigger>) {
+    /// Returns true if at least one unfired trigger's files have all been
+    /// opened during this beat.
+    fn has_ready_trigger(&self) -> bool {
+        self.triggers
+            .iter()
+            .filter(|t| !t.fired)
+            .any(|t| match t.oper {
+                FileTriggerOperation::Any => t.files.iter().any(|f| self.opened.contains(f)),
+                FileTriggerOperation::All => t.files.iter().all(|f| self.opened.contains(f)),
+            })
+    }
+
+    /// Fire every trigger whose files have all been opened during this beat.
+    /// Returns the lines and events from fired triggers, marking each `fired`
+    /// so it only runs once.
+    pub fn flush_ready(&mut self) -> (Vec<DialogueLine>, Vec<ScriptedEventTrigger>) {
+        let opened = &self.opened;
         let mut lines = Vec::new();
         let mut events = Vec::new();
 
         for trigger in self.triggers.iter_mut().filter(|t| !t.fired) {
             let ready = match trigger.oper {
-                FileTriggerOperation::Any => trigger.files.iter().any(|f| open.contains(f)),
-                FileTriggerOperation::All => trigger.files.iter().all(|f| open.contains(f)),
+                FileTriggerOperation::Any => trigger.files.iter().any(|f| opened.contains(f)),
+                FileTriggerOperation::All => trigger.files.iter().all(|f| opened.contains(f)),
             };
             if ready {
                 trigger.fired = true;
@@ -518,18 +534,13 @@ fn flush_file_triggers(
     mut cmd: Commands,
 ) {
     let dialogue_finished = dialogues.lines.get(dialogues.index).is_none();
-    let open_files = currently_open_files(&open_windows);
 
-    let any_ready = triggers
-        .triggers
-        .iter()
-        .filter(|t| !t.fired)
-        .any(|t| match t.oper {
-            FileTriggerOperation::Any => t.files.iter().any(|f| open_files.contains(f)),
-            FileTriggerOperation::All => t.files.iter().all(|f| open_files.contains(f)),
-        });
+    // Fold this frame's open windows into the cumulative `opened` set, so a
+    // trigger fires once its files have each been seen rather than requiring
+    // them all to stay open at the same time.
+    triggers.opened.extend(currently_open_files(&open_windows));
 
-    if !dialogue_finished || !any_ready {
+    if !dialogue_finished || !triggers.has_ready_trigger() {
         triggers.delay.reset();
         return;
     }
@@ -539,7 +550,7 @@ fn flush_file_triggers(
         return;
     }
 
-    let (new_lines, direct_events) = triggers.flush_with_open(&open_files);
+    let (new_lines, direct_events) = triggers.flush_ready();
     triggers.delay.reset();
     if !new_lines.is_empty() {
         dialogues.add_lines(new_lines);
