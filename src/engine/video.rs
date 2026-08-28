@@ -1,4 +1,9 @@
-use std::{collections::HashMap, path::Path, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use bevy::{
     asset::RenderAssetUsages,
@@ -40,12 +45,41 @@ pub struct VideoPlayers {
     data: HashMap<Entity, VideoPlayerData>,
 }
 
+/// A decoded frame that is waiting for its presentation time before being shown.
+struct PendingFrame {
+    /// Presentation time in seconds, relative to the start of the video stream.
+    when: f64,
+    /// The scaled RGBA frame, ready to be copied into the GPU texture.
+    frame: ffmpeg::frame::Video,
+}
+
+enum FrameDecode {
+    Frame(PendingFrame),
+    EndOfStream,
+}
+
 struct VideoPlayerData {
     path: String,
     stream_index: usize,
     decoder: ffmpeg::decoder::Video,
     input_context: ffmpeg::format::context::Input,
     scaler: ffmpeg::software::scaling::Context,
+    /// Seconds per stream tick (e.g. 1/60 for a 60 fps video).
+    time_base_secs: f64,
+    /// The stream's start time in ticks (usually 0). Frame PTS are relative to
+    /// this when converted to a presentation time.
+    stream_start_ticks: i64,
+    /// Container duration in seconds, used for progress logging.
+    duration_secs: f64,
+    /// Number of frames in the stream (`-1` when the container does not say).
+    frame_count: i64,
+    /// When the current playthrough started (wall clock). `None` until the
+    /// first frame is due.
+    playback_start: Option<Instant>,
+    /// The next frame to show, held until its presentation time arrives.
+    pending: Option<PendingFrame>,
+    /// Number of times a looping video has restarted.
+    loop_count: u32,
 }
 
 impl VideoPlayerData {
@@ -72,13 +106,40 @@ impl VideoPlayerData {
             ffmpeg::software::scaling::flag::Flags::BILINEAR,
         )?;
 
+        // Read the stream timing metadata before `input_context` is moved into
+        // the struct below.
+        let time_base = input_stream.time_base();
+        let time_base_secs = time_base.numerator() as f64 / time_base.denominator() as f64;
+        let stream_start_ticks = input_stream.start_time().max(0);
+        let frame_count = input_stream.frames();
+        // `Input::duration` is in microseconds (AV_TIME_BASE units).
+        let duration_secs = (input_context.duration() as f64 / 1_000_000.0).max(0.0);
+
         Ok(Self {
             path: path.to_string_lossy().to_string(),
             stream_index,
             decoder,
             input_context,
             scaler,
+            time_base_secs,
+            stream_start_ticks,
+            duration_secs,
+            frame_count,
+            playback_start: None,
+            pending: None,
+            loop_count: 0,
         })
+    }
+
+    /// Convert a frame's PTS (in stream ticks) to a presentation time in
+    /// seconds, relative to the start of the stream.
+    fn frame_time(&self, pts: Option<i64>) -> f64 {
+        match pts {
+            Some(pts) => (pts as f64 - self.stream_start_ticks as f64) * self.time_base_secs,
+            // Frames without a PTS are rare (typically the last flushed frames);
+            // show them as soon as they are decoded.
+            None => f64::NEG_INFINITY,
+        }
     }
 }
 
@@ -302,8 +363,7 @@ fn decode_audio(path: &Path) -> Result<Option<VideoAudioSource>, ffmpeg::Error> 
     let mut process_decoded_frame = |decoded: &ffmpeg::frame::Audio| -> Result<(), ffmpeg::Error> {
         let mut resampled = ffmpeg::frame::Audio::empty();
         resampler.run(decoded, &mut resampled)?;
-        let plane = resampled.plane::<f32>(0);
-        samples.extend_from_slice(plane);
+        append_packed_f32_samples(&mut samples, &resampled, channels)?;
         Ok(())
     };
 
@@ -343,8 +403,7 @@ fn decode_audio(path: &Path) -> Result<Option<VideoAudioSource>, ffmpeg::Error> 
             let mut resampled = ffmpeg::frame::Audio::empty();
             match resampler.flush(&mut resampled) {
                 Ok(Some(_)) => {
-                    let plane = resampled.plane::<f32>(0);
-                    samples.extend_from_slice(plane);
+                    append_packed_f32_samples(&mut samples, &resampled, channels)?;
                 }
                 Ok(None) | Err(_) => break,
             }
@@ -362,27 +421,105 @@ fn decode_audio(path: &Path) -> Result<Option<VideoAudioSource>, ffmpeg::Error> 
     }))
 }
 
+/// Append the valid portion of an interleaved F32 audio frame.
+///
+/// `Audio::plane::<f32>` has a length of `frame.samples()` even for packed
+/// audio, which omits all but one channel. Read the packed byte buffer directly
+/// and account for every channel instead.
+fn append_packed_f32_samples(
+    output: &mut Vec<f32>,
+    frame: &ffmpeg::frame::Audio,
+    channels: u16,
+) -> Result<(), ffmpeg::Error> {
+    let sample_count = frame.samples() * usize::from(channels);
+    let byte_count = sample_count * size_of::<f32>();
+    let bytes = frame
+        .data(0)
+        .get(..byte_count)
+        .ok_or(ffmpeg::Error::InvalidData)?;
+
+    output.extend(
+        bytes
+            .chunks_exact(size_of::<f32>())
+            .map(|bytes| f32::from_ne_bytes(bytes.try_into().expect("f32-sized chunk"))),
+    );
+    Ok(())
+}
+
 fn update_video_players(
     mut players: NonSendMut<VideoPlayers>,
     mut query: Query<(Entity, &mut VideoPlayer)>,
     mut images: ResMut<Assets<Image>>,
 ) {
     for (entity, mut player) in &mut query {
+        if player.finished {
+            continue;
+        }
         let Some(data) = players.data.get_mut(&entity) else {
             continue;
         };
 
-        if decode_and_upload_frame(data, &player.image_handle, &mut images) {
+        // Playback is paced by the wall clock, not the game's frame rate: a
+        // video must play N frames over their real duration regardless of how
+        // fast the game runs. Without this, a 60 fps cutscene plays at the
+        // game's tick rate (e.g. 2x speed on a 120 Hz display).
+        let playback_start = *data.playback_start.get_or_insert_with(|| {
+            if data.loop_count == 0 {
+                info!(
+                    "[video] {}: playback started (expected {:.2}s, {} frames @ {:.0} fps)",
+                    data.path,
+                    data.duration_secs,
+                    data.frame_count.max(0),
+                    1.0 / data.time_base_secs,
+                );
+            }
+            Instant::now()
+        });
+        let elapsed = playback_start.elapsed().as_secs_f64();
+
+        // Show the held frame once its time arrives, then keep decoding until
+        // the next frame is due in the future (or the stream ends). Frames that
+        // are already overdue are shown immediately, so a slow tick catches up
+        // by skipping frames instead of slowing the video down.
+        let mut eof = false;
+        while !eof {
+            match data.pending.take() {
+                Some(pending) if pending.when <= elapsed => {
+                    upload_frame(&player.image_handle, &mut images, &pending.frame);
+                }
+                Some(pending) => {
+                    // Not due yet: keep holding it on screen.
+                    data.pending = Some(pending);
+                    break;
+                }
+                None => match decode_next_frame(data) {
+                    FrameDecode::Frame(pending) => {
+                        data.pending = Some(pending);
+                    }
+                    FrameDecode::EndOfStream => {
+                        eof = true;
+                        break;
+                    }
+                },
+            }
+        }
+
+        if !eof || elapsed < data.duration_secs {
             continue;
         }
 
         if player.loop_video {
             // Recreate the ffmpeg context to loop cleanly.
+            let loop_count = data.loop_count + 1;
+            info!("[video] {}: looping (loop #{loop_count})", data.path);
             match VideoPlayerData::new(&data.path) {
-                Ok(new_data) => {
+                Ok(mut new_data) => {
+                    new_data.loop_count = loop_count;
                     *data = new_data;
                     // Decode a frame immediately so the screen never goes blank.
-                    let _ = decode_and_upload_frame(data, &player.image_handle, &mut images);
+                    if let FrameDecode::Frame(pending) = decode_next_frame(data) {
+                        upload_frame(&player.image_handle, &mut images, &pending.frame);
+                    }
                 }
                 Err(err) => {
                     error!("Failed to loop video {}: {err}", data.path);
@@ -391,16 +528,29 @@ fn update_video_players(
         } else {
             // Non-looping video has reached its end. Hold on the final frame
             // and signal callers that the cutscene is complete.
+            if let Some(start) = data.playback_start {
+                let expected = data.duration_secs.max(0.001);
+                let elapsed = start.elapsed().as_secs_f64();
+                info!(
+                    "[video] {}: finished in {elapsed:.2}s (expected {expected:.2}s, {:.2}x realtime)",
+                    data.path,
+                    elapsed / expected,
+                );
+            }
             player.finished = true;
         }
     }
 }
 
-fn decode_and_upload_frame(
-    data: &mut VideoPlayerData,
-    image_handle: &Handle<Image>,
-    images: &mut Assets<Image>,
-) -> bool {
+fn decode_next_frame(data: &mut VideoPlayerData) -> FrameDecode {
+    // A packet can produce more than one frame. Drain previously submitted
+    // packet data before reading another packet, otherwise frames can be lost
+    // or send_packet can fail with EAGAIN.
+    let mut decoded = ffmpeg::frame::Video::empty();
+    if data.decoder.receive_frame(&mut decoded).is_ok() {
+        return scale_frame(data, &decoded);
+    }
+
     while let Some((stream, packet)) = data.input_context.packets().next() {
         if stream.index() != data.stream_index {
             continue;
@@ -411,22 +561,8 @@ fn decode_and_upload_frame(
             continue;
         }
 
-        let mut decoded = ffmpeg::frame::Video::empty();
         if data.decoder.receive_frame(&mut decoded).is_ok() {
-            let mut rgba_frame = ffmpeg::frame::Video::empty();
-            if let Err(err) = data.scaler.run(&decoded, &mut rgba_frame) {
-                error!("ffmpeg scaler error: {err}");
-                continue;
-            }
-
-            if let Some(image) = images.get_mut(image_handle) {
-                image
-                    .data
-                    .as_mut()
-                    .expect("video texture data should stay in the main world")
-                    .copy_from_slice(rgba_frame.data(0));
-            }
-            return true;
+            return scale_frame(data, &decoded);
         }
     }
 
@@ -438,22 +574,38 @@ fn decode_and_upload_frame(
         _ => {}
     }
 
-    let mut decoded = ffmpeg::frame::Video::empty();
     if data.decoder.receive_frame(&mut decoded).is_ok() {
-        let mut rgba_frame = ffmpeg::frame::Video::empty();
-        if data.scaler.run(&decoded, &mut rgba_frame).is_ok() {
-            if let Some(image) = images.get_mut(image_handle) {
-                image
-                    .data
-                    .as_mut()
-                    .expect("video texture data should stay in the main world")
-                    .copy_from_slice(rgba_frame.data(0));
-            }
-            return true;
-        }
+        return scale_frame(data, &decoded);
     }
 
-    false
+    FrameDecode::EndOfStream
+}
+
+fn scale_frame(data: &mut VideoPlayerData, decoded: &ffmpeg::frame::Video) -> FrameDecode {
+    let mut rgba_frame = ffmpeg::frame::Video::empty();
+    if let Err(err) = data.scaler.run(decoded, &mut rgba_frame) {
+        error!("ffmpeg scaler error: {err}");
+        return FrameDecode::EndOfStream;
+    }
+
+    FrameDecode::Frame(PendingFrame {
+        when: data.frame_time(decoded.pts()),
+        frame: rgba_frame,
+    })
+}
+
+fn upload_frame(
+    image_handle: &Handle<Image>,
+    images: &mut Assets<Image>,
+    frame: &ffmpeg::frame::Video,
+) {
+    if let Some(image) = images.get_mut(image_handle) {
+        image
+            .data
+            .as_mut()
+            .expect("video texture data should stay in the main world")
+            .copy_from_slice(frame.data(0));
+    }
 }
 
 fn cleanup_despawned_players(
@@ -487,7 +639,25 @@ mod tests {
             .expect("bootup.mp4 should have an audio track");
         assert_eq!(source.channels, 2);
         assert_eq!(source.sample_rate, 44100);
-        assert!(source.samples.len() > 1000);
+        let duration =
+            source.samples.len() as f64 / (source.channels as f64 * source.sample_rate as f64);
+        assert!((duration - 5.967).abs() < 0.02, "decoded {duration:.3}s");
+    }
+
+    #[test]
+    fn bootup_mp4_timing_metadata() {
+        init();
+        let data = super::VideoPlayerData::new(Path::new("assets/cutscenes/bootup.mp4"))
+            .expect("VideoPlayerData::new should not error");
+
+        // 60 fps, 358 frames, ~5.97 s: the values the pacing clock relies on.
+        assert!((1.0 / data.time_base_secs - 60.0).abs() < 0.001);
+        assert_eq!(data.frame_count, 358);
+        assert!((data.duration_secs - 5.97).abs() < 0.1);
+
+        // PTS 0 is the first frame; PTS 30 is exactly half a second in.
+        assert!(data.frame_time(Some(0)).abs() < f64::EPSILON);
+        assert!((data.frame_time(Some(30)) - 0.5).abs() < 1e-9);
     }
 
     #[test]

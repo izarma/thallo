@@ -377,7 +377,8 @@ fn show_task_bar(
         });
 
     // Self-destruct countdown banner - pinned to the top-center of the screen.
-    if act_timer.active {
+    // Only shown in dev builds; hidden from players in release builds.
+    if act_timer.active && cfg!(debug_assertions) {
         let remaining = act_timer.remaining.max(0.0);
         let mins = (remaining / 60.0).floor() as u32;
         let secs = (remaining % 60.0).floor() as u32;
