@@ -1,3 +1,4 @@
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_common_assets::json::JsonAssetPlugin;
 use bevy_egui::{
@@ -35,7 +36,10 @@ use crate::{
             text_viewer::show_text_viewer,
             unlocker::show_unlocker,
         },
-        theme::widgets::title_bar::{TitleBarAction, title_bar},
+        theme::{
+            button_textures::ButtonTextures,
+            widgets::title_bar::{TitleBarAction, title_bar},
+        },
     },
 };
 
@@ -79,6 +83,15 @@ pub(crate) const WINDOW_DESIGN_H: f32 = 718.0;
 pub(crate) const WINDOW_PAD_X: f32 = 6.0;
 pub(crate) const WINDOW_PAD_BOT: f32 = 6.0;
 
+/// ASCII animation resources used by the Decrypter and Ripper app windows,
+/// bundled to stay under Bevy's 16-parameter system limit.
+#[derive(SystemParam)]
+struct AsciiAnimations<'w> {
+    assets: Res<'w, Assets<AsciiAnimation>>,
+    ripper: Res<'w, RipperAsciiAnimationHandle>,
+    decrypter: Res<'w, DecrypterAsciiAnimationHandle>,
+}
+
 // Frame should be used better here before fixing further ui stuff
 fn show_open_windows(
     mut cmd: Commands,
@@ -94,11 +107,12 @@ fn show_open_windows(
     paused: Res<State<Pause>>,
     state: Res<UnlockState>,
     mut clipboard: ResMut<EguiClipboard>,
-    ascii_animations: Res<Assets<AsciiAnimation>>,
-    ripper_ascii_handle: Res<RipperAsciiAnimationHandle>,
-    decrypter_ascii_handle: Res<DecrypterAsciiAnimationHandle>,
+    ascii: AsciiAnimations,
+    button_textures: Option<Res<ButtonTextures>>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
+    let button_texture = button_textures.as_deref().map(|t| t.button);
+    let reveal_button_texture = button_textures.as_deref().map(|t| t.reveal_button);
     let top_layer_window_id = ctx.memory(|mem| {
         mem.layer_ids()
             .filter(|layer| layer.order == egui::Order::Middle)
@@ -166,7 +180,14 @@ fn show_open_windows(
                                 WindowAction::None
                             }
                             Applications::Unlocker { path, input } => {
-                                if show_unlocker(ui, input, &scale, &mut clipboard) {
+                                if show_unlocker(
+                                    ui,
+                                    input,
+                                    &scale,
+                                    &mut clipboard,
+                                    button_texture,
+                                    reveal_button_texture,
+                                ) {
                                     WindowAction::UnlockAttempt { path: path.clone() } // is this alright?
                                 } else {
                                     WindowAction::None
@@ -228,6 +249,7 @@ fn show_open_windows(
                                     &mut dialogues,
                                     &scale,
                                     is_focused,
+                                    button_texture,
                                 );
                                 if send {
                                     commit_player_line(&mut dialog_runner, &mut dialogues);
@@ -240,7 +262,7 @@ fn show_open_windows(
                                 minigames_triggered,
                                 ..
                             } => {
-                                let ascii = ascii_animations.get(&decrypter_ascii_handle.0);
+                                let ascii = ascii.assets.get(&ascii.decrypter.0);
                                 let output = show_encrypted(
                                     ui,
                                     elapsed,
@@ -271,7 +293,7 @@ fn show_open_windows(
                             } => {
                                 let target =
                                     path.as_ref().map(|p| p.file_name()).unwrap_or("UNKNOWN");
-                                let ascii = ascii_animations.get(&ripper_ascii_handle.0);
+                                let ascii = ascii.assets.get(&ascii.ripper.0);
                                 let output = show_netripper_transmit(
                                     ui,
                                     target,

@@ -6,7 +6,7 @@ use bevy_egui::{
 use crate::{
     engine::design_scale::DesignScale,
     ui::theme::{
-        palette::{CONTENT_FONT_SIZE, DEEP_RED_THEME, RED_CONTRAST_THEME, apply_button_theme},
+        palette::{CONTENT_FONT_SIZE, DEEP_RED_THEME, apply_button_theme},
         widgets::primitives::{self},
     },
 };
@@ -16,6 +16,8 @@ pub(super) fn show_unlocker(
     input: &mut String,
     scale: &DesignScale,
     clipboard: &mut EguiClipboard,
+    button_texture: Option<egui::TextureId>,
+    reveal_button_texture: Option<egui::TextureId>,
 ) -> bool {
     let mut submitted = false;
     // Egui state tracking for wrong password feedback.
@@ -82,28 +84,20 @@ pub(super) fn show_unlocker(
 
             apply_button_theme(ui);
             // Toggle password visibility.
-            let eye_response = ui
-                .add_sized(
-                    scale.px(48.0, 48.0),
-                    egui::Button::new(egui::RichText::new("👁").size(scale.py(CONTENT_FONT_SIZE)))
-                        .selected(show_plaintext)
-                        .sense(egui::Sense::click()),
-                )
-                .on_hover_text("Show/hide password");
+            let eye_response = primitives::icon_button(
+                ui,
+                scale,
+                egui::vec2(40.0, 40.0),
+                reveal_button_texture,
+                show_plaintext,
+            )
+            .on_hover_text("Show/hide password");
             if eye_response.clicked() {
                 show_plaintext = !show_plaintext;
             }
 
             ui.add_space(scale.py(16.0));
-            let btn = ui.add_sized(
-                scale.px(120.0, 48.0),
-                egui::Button::new(
-                    egui::RichText::new("Unlock")
-                        .size(scale.py(CONTENT_FONT_SIZE))
-                        .color(RED_CONTRAST_THEME)
-                        .strong(),
-                ),
-            );
+            let btn = primitives::button(ui, "Unlock", scale, button_texture);
 
             if btn.clicked() || enter_pressed {
                 submitted = true;

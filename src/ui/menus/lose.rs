@@ -11,7 +11,10 @@ use crate::{
         },
     },
     game::beats::ApplyBeatCommand,
-    ui::{menus::Menu, theme::widgets::primitives},
+    ui::{
+        menus::Menu,
+        theme::{button_textures::ButtonTextures, widgets::primitives},
+    },
 };
 
 const DEATH_VIDEO_PATH: &str = "assets/cutscenes/death_screen.mp4";
@@ -51,7 +54,9 @@ fn lose_menu(
     mut cmd: Commands,
     mut app_exit: MessageWriter<AppExit>,
     video: Query<&VideoPlayer>,
+    button_textures: Option<Res<ButtonTextures>>,
 ) -> Result {
+    let button_texture = button_textures.as_deref().map(|t| t.button);
     let ctx = contexts.ctx_mut()?;
 
     // Hide the menu until the death cutscene has finished playing.
@@ -66,14 +71,14 @@ fn lose_menu(
             "The catastrophe arrived before you could send the SOS.",
             &scale,
         );
-        if primitives::button(ui, "Retry", &scale).clicked() {
+        if primitives::button(ui, "Retry", &scale, button_texture).clicked() {
             // Rebuild a clean Act 2 and boot straight back to the desktop,
             // skipping the ActBreak -> Title -> Act2Startup title card.
             cmd.queue(ApplyBeatCommand(StoryBeat::Act2Sos));
             next_menu.set(Menu::None);
             next_screen.set(Screen::Loading);
         }
-        if primitives::button(ui, "Quit", &scale).clicked() {
+        if primitives::button(ui, "Quit", &scale, button_texture).clicked() {
             app_exit.write(AppExit::Success);
         }
     });

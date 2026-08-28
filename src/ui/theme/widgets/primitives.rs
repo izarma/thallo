@@ -46,6 +46,29 @@ pub fn low_centered_panel(ctx: &egui::Context, id: &str, body: impl FnOnce(&mut 
         });
 }
 
+/// for startup
+pub fn startup_panel(ctx: &egui::Context, id: &str, body: impl FnOnce(&mut egui::Ui)) {
+    // consume the CentralPanel so egui doesn't complain about unused space
+    egui::CentralPanel::default()
+        .frame(egui::Frame::NONE)
+        .show(ctx, |_ui| {});
+
+    let rect = ctx.content_rect();
+    // +y moves down, so a positive y offset pushes the panel lower.
+    // Negative x moves it left of center.
+    let offset = egui::vec2(-rect.width() * 0.17, rect.height() * 0.20);
+
+    egui::Area::new(egui::Id::new(id))
+        .anchor(egui::Align2::CENTER_CENTER, offset)
+        .order(egui::Order::Foreground)
+        .show(ctx, |ui| {
+            ui.spacing_mut().item_spacing.y = 20.0;
+            ui.vertical_centered(|ui| {
+                body(ui);
+            });
+        });
+}
+
 /// A large header label (≈ 40 px).
 pub fn header(ui: &mut egui::Ui, text: impl Into<String>, scale: &DesignScale) {
     ui.label(
@@ -65,15 +88,105 @@ pub fn label(ui: &mut egui::Ui, text: impl Into<String>, scale: &DesignScale) ->
     )
 }
 
-/// A large rounded button (380 × 80).  Returns the [`egui::Response`] so the
+const BUTTON_FRAME_W: f32 = 1.0 / 3.0;
+const BUTTON_IDLE_UV: egui::Rect =
+    egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(BUTTON_FRAME_W, 1.0));
+const BUTTON_HOVER_UV: egui::Rect = egui::Rect::from_min_max(
+    egui::pos2(BUTTON_FRAME_W, 0.0),
+    egui::pos2(BUTTON_FRAME_W * 2.0, 1.0),
+);
+const BUTTON_PRESSED_UV: egui::Rect =
+    egui::Rect::from_min_max(egui::pos2(BUTTON_FRAME_W * 2.0, 0.0), egui::pos2(1.0, 1.0));
+
+/// Picks the sprite-sheet frame for the given interaction state.  A `selected`
+/// toggle keeps the Pressed frame until the pointer interacts with it again.
+fn button_uv(response: &egui::Response, selected: bool) -> egui::Rect {
+    if response.is_pointer_button_down_on() {
+        BUTTON_PRESSED_UV
+    } else if response.hovered() {
+        BUTTON_HOVER_UV
+    } else if selected {
+        BUTTON_PRESSED_UV
+    } else {
+        BUTTON_IDLE_UV
+    }
+}
+
+/// Draws one sprite frame into `rect`, falling back to a themed rounded rect
+/// while the asset is still loading.
+fn paint_button_frame(
+    ui: &mut egui::Ui,
+    rect: egui::Rect,
+    texture: Option<egui::TextureId>,
+    uv: egui::Rect,
+) {
+    if let Some(texture) = texture {
+        ui.painter().image(texture, rect, uv, egui::Color32::WHITE);
+    } else {
+        // Fallback while the asset is still loading.
+        apply_button_theme(ui);
+        ui.painter().rect_filled(
+            rect,
+            egui::CornerRadius::same(40),
+            ui.visuals().widgets.inactive.weak_bg_fill,
+        );
+    }
+}
+
+/// A button rendered with the `ui/button.png` three-frame sprite (Idle, Hovered,
+/// Pressed).  Each frame is 175 × 40; the image is drawn at that native design
+/// size and scaled by [`DesignScale`].  Returns the [`egui::Response`] so the
 /// caller can check `.clicked()`, `.hovered()`, etc.
-pub fn button(ui: &mut egui::Ui, text: impl Into<String>, scale: &DesignScale) -> egui::Response {
-    apply_button_theme(ui);
-    ui.add_sized(
-        scale.px(380.0, 80.0),
-        egui::Button::new(egui::RichText::new(text).size(32.0).color(HEADER_COLOR))
-            .corner_radius(egui::CornerRadius::same(40)),
-    )
+pub fn button(
+    ui: &mut egui::Ui,
+    text: impl Into<String>,
+    scale: &DesignScale,
+    texture: Option<egui::TextureId>,
+) -> egui::Response {
+    let text = text.into();
+    let size = scale.px(175.0, 40.0);
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
+
+    if ui.is_rect_visible(rect) {
+        paint_button_frame(ui, rect, texture, button_uv(&response, false));
+
+        let text_color = if response.hovered() {
+            Color32::BLACK
+        } else {
+            HEADER_COLOR
+        };
+
+        ui.painter().text(
+            rect.center(),
+            egui::Align2::CENTER_CENTER,
+            text,
+            egui::FontId::proportional(scale.py(16.0)),
+            text_color,
+        );
+    }
+
+    response
+}
+
+/// An icon-only button rendered with a three-frame sprite sheet (Idle, Hovered,
+/// Pressed), e.g. `ui/reveal_button.png` (40 × 40 frames in a 120 × 40 sheet).
+/// The image is drawn at `frame_size` and scaled by [`DesignScale`]; `selected`
+/// pins it to the Pressed frame for a toggle look.
+pub fn icon_button(
+    ui: &mut egui::Ui,
+    scale: &DesignScale,
+    frame_size: egui::Vec2,
+    texture: Option<egui::TextureId>,
+    selected: bool,
+) -> egui::Response {
+    let size = scale.px(frame_size.x, frame_size.y);
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
+
+    if ui.is_rect_visible(rect) {
+        paint_button_frame(ui, rect, texture, button_uv(&response, selected));
+    }
+
+    response
 }
 
 /// A placeholder label for empty or error states — italicised and dimmed.
