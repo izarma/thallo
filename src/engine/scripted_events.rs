@@ -424,7 +424,7 @@ fn effect_transmit_sos(dialogues: &mut Dialogues) {
             false,
             "I suspect the letter we sent was never delivered, so you have to find her.",
         ),
-        DialogueLine::new(false, "I'll be back.").on_complete(ScriptedEventTrigger::Win),
+        DialogueLine::new(true, "I'll be back.").on_complete(ScriptedEventTrigger::Win),
     ]);
 }
 
