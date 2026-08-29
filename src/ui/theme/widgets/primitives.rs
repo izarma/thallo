@@ -2,8 +2,8 @@ use bevy_egui::egui;
 
 use crate::engine::design_scale::DesignScale;
 use crate::ui::theme::palette::{
-    COLOR_DONE, COLOR_DONE_FILL, COLOR_PROGRESS_BORDER, CONTENT_FONT_SIZE, HEADER_COLOR,
-    HEADING_FONT_SIZE, LABEL_COLOR, apply_button_theme,
+    CONTENT_FONT_SIZE, HEADER_COLOR, HEADING_FONT_SIZE, LABEL_COLOR, RED_CONTRAST_THEME,
+    RED_CONTRAST_THEME2, apply_button_theme,
 };
 
 /// Wraps `body` in a vertically-and-horizontally centred [`egui::CentralPanel`]
@@ -206,7 +206,6 @@ pub fn truncate_label(s: &str, max_chars: usize) -> String {
     }
 }
 
-use crate::ui::theme::palette::BUTTON_HOVERED_BG;
 use bevy_egui::egui::Color32;
 
 pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32, height: f32) {
@@ -216,11 +215,11 @@ pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32, height: f32) {
     let (outer, _) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::hover());
     let p = ui.painter();
 
-    // Border — green when done, grey-blue otherwise
+    // Border — deep red when done, contrast red while in progress
     let border = if done {
-        COLOR_DONE
+        RED_CONTRAST_THEME
     } else {
-        COLOR_PROGRESS_BORDER
+        RED_CONTRAST_THEME2
     };
     p.rect_filled(outer, egui::CornerRadius::same(3), border);
 
@@ -232,12 +231,12 @@ pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32, height: f32) {
         Color32::from_rgb(14, 14, 22),
     );
 
-    // Fill
+    // Fill — deep red when done, contrast red while in progress
     if progress > 0.0 {
         let fill = if done {
-            COLOR_DONE_FILL
+            RED_CONTRAST_THEME2
         } else {
-            BUTTON_HOVERED_BG
+            RED_CONTRAST_THEME
         };
         let fill_rect = egui::Rect::from_min_size(
             inner.min,

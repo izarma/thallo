@@ -15,9 +15,10 @@ use crate::{
     ui::{
         apps::{WINDOW_DESIGN_H, WINDOW_DESIGN_W, WINDOW_PAD_BOT, WINDOW_PAD_X},
         theme::{
-            palette::{CONTENT_FONT_SIZE, apply_button_theme},
+            button_textures::ButtonTextures,
+            palette::CONTENT_FONT_SIZE,
             widgets::{
-                primitives::progress_bar,
+                primitives::{button, progress_bar},
                 title_bar::{TitleBarAction, title_bar},
             },
         },
@@ -46,11 +47,13 @@ fn show_popups(
     mut open_alerts: ResMut<OpenAlerts>,
     mut cmd: Commands,
     textures: Res<DesktopTextures>,
+    button_textures: Option<Res<ButtonTextures>>,
     scale: Res<DesignScale>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
     let ft_tex = textures.file_transfer_sheet;
     let error_tex = textures.error_popup;
+    let button_texture = button_textures.as_deref().map(|t| t.button);
     let window_frame = egui::Frame::NONE;
     let window_size = scale.px(WINDOW_DESIGN_W / 2.0, WINDOW_DESIGN_H / 2.0);
     for entry in open_alerts.alerts.iter_mut() {
@@ -111,7 +114,14 @@ fn show_popups(
                 match &entry.alert {
                     SystemAlerts::FileTransfer(download) => {
                         title_bar(ui, "ALERT", &scale, false, false);
-                        if render_file_transfer_ui(ui, entry.elapsed, download, ft_tex, &scale) {
+                        if render_file_transfer_ui(
+                            ui,
+                            entry.elapsed,
+                            download,
+                            ft_tex,
+                            &scale,
+                            button_texture,
+                        ) {
                             close_requested = true;
                         }
                     }
@@ -210,6 +220,7 @@ fn render_file_transfer_ui(
     download: &NewFileReceiving,
     texture: egui::TextureId,
     scale: &DesignScale,
+    button_texture: Option<egui::TextureId>,
 ) -> bool {
     // Apply common scaled text styles to this popup.
     let font_size = scale.py(CONTENT_FONT_SIZE);
@@ -255,11 +266,7 @@ fn render_file_transfer_ui(
         progress_bar(ui, progress, bar_width, bar_height);
 
         if is_done {
-            apply_button_theme(ui);
-            if ui
-                .add_sized(scale.px(140.0, 40.0), egui::Button::new("Finish"))
-                .clicked()
-            {
+            if button(ui, "Finish", scale, button_texture).clicked() {
                 close = true;
             }
         } else {
