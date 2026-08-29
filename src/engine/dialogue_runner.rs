@@ -84,8 +84,15 @@ pub fn derive_state(lines: &[DialogueLine], index: usize) -> ChatBoxState {
     }
 }
 
+/// Fixed "reading" pause before anon's reply starts appearing, so even one-word
+/// replies don't pop in instantly — it should feel like anon read the message first.
+pub const READ_DELAY: f32 = 0.8;
+
 /// Chars/second at which anon "types" his messages.
-pub const TYPING_SPEED: f32 = 18.0;
+pub const TYPING_SPEED: f32 = 50.0;
+
+/// Hard cap on anon's reply duration so the longest messages don't stall the chat.
+pub const MAX_REPLY_TIME: f32 = 4.5;
 
 fn tick_dialogue_runner(
     mut runner: ResMut<DialogueRunner>,
@@ -118,7 +125,9 @@ fn tick_dialogue_runner(
             return;
         };
         *elapsed += time.delta_secs();
-        (*elapsed * TYPING_SPEED) as usize >= line.text.chars().count()
+        let reply_time =
+            (READ_DELAY + line.text.chars().count() as f32 / TYPING_SPEED).min(MAX_REPLY_TIME);
+        *elapsed >= reply_time
     } else {
         false
     };
