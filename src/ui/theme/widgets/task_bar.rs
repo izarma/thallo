@@ -1,8 +1,9 @@
 use bevy_egui::egui;
 
+use crate::engine::design_scale::DesignScale;
 use crate::ui::theme::{
-    palette::{BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, HEADER_COLOR, apply_button_theme},
-    widgets::primitives::truncate_label,
+    palette::{BUTTON_ACTIVE_BG, BUTTON_BG, BUTTON_HOVERED_BG, HEADER_COLOR},
+    widgets::primitives::{button, sliced_button, truncate_label},
 };
 
 /// Design-space sizes at 1920×1080.  Callers scale these via `DesignScale`
@@ -79,12 +80,19 @@ pub fn taskbar_app_button(
         action = TaskbarAppAction::Clicked;
     }
     if label != "Chat" {
-        response.context_menu(|ui| {
-            if ui.button("Close          ").clicked() {
-                action = TaskbarAppAction::Close;
-                ui.close();
-            }
-        });
+        egui::Popup::context_menu(&response)
+            .frame(
+                egui::Frame::new()
+                    .fill(BUTTON_BG)
+                    .inner_margin(0)
+                    .stroke(egui::Stroke::NONE),
+            )
+            .show(|ui| {
+                if ui.button("Close          ").clicked() {
+                    action = TaskbarAppAction::Close;
+                    ui.close();
+                }
+            });
     }
 
     action
@@ -108,6 +116,10 @@ pub struct GroupedWindow {
     pub is_minimized: bool,
 }
 
+/// A grouped task-bar tab that opens a popup listing each window in the group.
+///
+/// `tab_size` should be `scale.px(TAB_DESIGN_W, TASKBAR_DESIGN_H)` from the caller.
+/// `button_texture` is the `ui/button.png` sprite used for the popup row buttons.
 pub fn taskbar_group_button(
     ui: &mut egui::Ui,
     label: impl Into<String>,
@@ -116,6 +128,8 @@ pub fn taskbar_group_button(
     tab_size: egui::Vec2,
     windows: &[GroupedWindow],
     font_size: f32,
+    scale: &DesignScale,
+    button_texture: Option<egui::TextureId>,
 ) -> GroupTabAction {
     let label: String = label.into();
     let count = windows.len();
@@ -149,6 +163,7 @@ pub fn taskbar_group_button(
     egui::Popup::menu(&response)
         .id(response.id.with("group_popup"))
         .width(tab_size.x)
+        .frame(egui::Frame::NONE)
         .show(|ui| {
             ui.set_min_width(tab_size.x);
             for win in windows {
@@ -161,28 +176,34 @@ pub fn taskbar_group_button(
 
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
-                    let close_width = tab_size.y;
 
-                    // Main row: click to toggle minimize.
-                    apply_button_theme(ui);
-                    let btn = ui.add_sized(
-                        [tab_size.x - close_width, tab_size.y],
-                        egui::Button::new(
-                            egui::RichText::new(row_label)
-                                .size(font_size)
-                                .color(text_color),
-                        ),
+                    // Each popup row is a 40px-high button asset stretched to the
+                    // same width as a regular tab.  The right-hand "×" is a square
+                    // built from the left and right 20px slices of the sprite.
+                    let row_h = scale.py(40.0);
+                    let close_w = row_h;
+                    let name_w = (tab_size.x - close_w).max(0.0);
+
+                    let name_btn = sliced_button(
+                        ui,
+                        row_label,
+                        egui::vec2(name_w, row_h),
+                        font_size,
+                        text_color,
+                        button_texture,
                     );
-                    if btn.clicked() {
+                    if name_btn.clicked() {
                         // Menu closes itself on click (CloseOnClick is Popup::menu default).
                         action = GroupTabAction::Selected(win.id);
                     }
 
-                    // Small × button to close just this window.
-                    apply_button_theme(ui);
-                    let close_btn = ui.add_sized(
-                        [close_width, tab_size.y],
-                        egui::Button::new(egui::RichText::new("×").size(font_size)),
+                    let close_btn = sliced_button(
+                        ui,
+                        "×",
+                        egui::vec2(close_w, row_h),
+                        font_size,
+                        HEADER_COLOR,
+                        button_texture,
                     );
                     if close_btn.clicked() {
                         action = GroupTabAction::Close(win.id);
@@ -193,35 +214,29 @@ pub fn taskbar_group_button(
         });
 
     // Right-click: context menu with bulk actions.
-    response.context_menu(|ui| {
-        if ui.button("Close All   ").clicked() {
-            action = GroupTabAction::CloseAll;
-            ui.close();
-        }
-    });
+    egui::Popup::context_menu(&response)
+        .frame(egui::Frame::NONE)
+        .show(|ui| {
+            if ui.button("Close All   ").clicked() {
+                action = GroupTabAction::CloseAll;
+                ui.close();
+            }
+        });
 
     action
 }
 
-/// A slim full-width menu row button, suitable for start-menu style lists.
+/// A menu row button for start-menu style lists, rendered with the
+/// `ui/button.png` three-frame sprite.
 /// Returns the [`egui::Response`] so the caller can check `.clicked()`.
 pub fn menu_item(
     ui: &mut egui::Ui,
     text: impl Into<String>,
-    tab_size: egui::Vec2,
-    font_size: f32,
+    scale: &DesignScale,
+    texture: Option<egui::TextureId>,
 ) -> egui::Response {
-    apply_button_theme(ui);
-    ui.add_sized(
-        tab_size,
-        egui::Button::new(
-            egui::RichText::new(text)
-                .size(font_size)
-                .color(HEADER_COLOR),
-        )
-        .right_text("")
-        .corner_radius(egui::CornerRadius::same(4)),
-    )
+    ui.vertical_centered(|ui| button(ui, text, scale, texture))
+        .inner
 }
 
 fn paint_tab_bg(

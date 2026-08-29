@@ -19,12 +19,14 @@ use crate::{
             WINDOW_DESIGN_H, WINDOW_DESIGN_W, WINDOW_PAD_BOT, settings_menu::show_settings_window,
         },
         theme::{
-            palette::{DEEP_RED_THEME, SYSTEM_FONT_SIZE},
+            button_textures::ButtonTextures,
+            palette::{DEEP_RED_THEME, HEADER_COLOR, SYSTEM_FONT_SIZE},
             widgets::{
                 icon_grid::{
                     ICON_DESIGN_SIZE, IconGridAction, IconGridItem, icon_for_filetype,
                     show_icon_grid,
                 },
+                primitives,
                 task_bar::{
                     GroupTabAction, GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H,
                     TaskbarAppAction, menu_item, taskbar_app_button, taskbar_group_button,
@@ -167,6 +169,7 @@ fn show_task_bar(
     mut contexts: EguiContexts,
     open_windows: Res<OpenWindows>,
     desktop_tex: Option<Res<DesktopTextures>>,
+    button_textures: Option<Res<ButtonTextures>>,
     scale: Res<DesignScale>,
     act_timer: Res<Act2Timer>,
     mut cmd: Commands,
@@ -177,6 +180,8 @@ fn show_task_bar(
     let start_size = scale.px(START_DESIGN_W, TASKBAR_DESIGN_H);
     let tab_size = scale.px(TAB_DESIGN_W, TASKBAR_DESIGN_H);
     let font_size = scale.py(SYSTEM_FONT_SIZE);
+    let button_texture = button_textures.as_deref().map(|t| t.button);
+    let menu_w = scale.px(175.0, 40.0).x;
     let ctx = contexts.ctx_mut()?;
     egui::TopBottomPanel::bottom("task_bar_space")
         .exact_height(bar_h)
@@ -198,7 +203,7 @@ fn show_task_bar(
             ui.painter().hline(
                 bar_rect.min.x..=bar_rect.max.x,
                 bar_rect.min.y,
-                egui::Stroke::new(5.0_f32, egui::Color32::WHITE), // todo: scale this better
+                egui::Stroke::new(9.0_f32, egui::Color32::WHITE), // todo: scale this better
             );
             egui::Frame::new()
                 .fill(DEEP_RED_THEME)
@@ -220,10 +225,16 @@ fn show_task_bar(
                         };
 
                         egui::Popup::menu(&start_clicked)
-                            .width(tab_size.x)
+                            .width(menu_w)
+                            .frame(
+                                egui::Frame::new()
+                                    .fill(DEEP_RED_THEME)
+                                    .inner_margin(egui::Margin::same(5))
+                                    .stroke(egui::Stroke::new(5.0_f32, HEADER_COLOR)),
+                            )
                             .show(|ui| {
-                                ui.heading("Start Menu");
-                                if menu_item(ui, "Terminal", tab_size, font_size).clicked() {
+                                primitives::header(ui, "ST Menu", &scale);
+                                if menu_item(ui, "Terminal", &scale, button_texture).clicked() {
                                     cmd.trigger(OpenAppEvent {
                                         name: "Terminal".to_string(),
                                         app_type: Applications::Terminal {
@@ -236,7 +247,8 @@ fn show_task_bar(
                                         },
                                     });
                                 }
-                                if menu_item(ui, "File Explorer", tab_size, font_size).clicked() {
+                                if menu_item(ui, "File Explorer", &scale, button_texture).clicked()
+                                {
                                     cmd.trigger(OpenAppEvent {
                                         name: HOME_PATH.to_string(),
                                         app_type: Applications::FileExplorer {
@@ -245,10 +257,10 @@ fn show_task_bar(
                                         },
                                     });
                                 }
-                                if menu_item(ui, "Settings", tab_size, font_size).clicked() {
+                                if menu_item(ui, "Settings", &scale, button_texture).clicked() {
                                     state.settings_open = true;
                                 }
-                                if menu_item(ui, "Shut Down", tab_size, font_size).clicked() {
+                                if menu_item(ui, "Shut Down", &scale, button_texture).clicked() {
                                     app_exit.write(AppExit::Success);
                                 }
                             });
@@ -322,7 +334,15 @@ fn show_task_bar(
                                 } else {
                                     // Multiple windows of the same type — render grouped with popup
                                     match taskbar_group_button(
-                                        ui, *key, *is_active, *icon, tab_size, windows, font_size,
+                                        ui,
+                                        *key,
+                                        *is_active,
+                                        *icon,
+                                        tab_size,
+                                        windows,
+                                        font_size,
+                                        &scale,
+                                        button_texture,
                                     ) {
                                         GroupTabAction::Selected(window_id) => {
                                             cmd.trigger(ToggleMinimizeEvent { id: window_id });
