@@ -28,7 +28,7 @@ pub(super) fn build_act1_dialogues() -> Dialogues {
             DialogueLine::new(true, "god i hate plants."),
             DialogueLine::new(
                 false,
-                "No shit, but I still need for you to read through them carefully. I noticed a few locked folders on the desktop. You know whose terminal is this? Can be connected to that.",
+                "No shit, but I still need for you to read through them carefully. I noticed a few locked folders on the desktop. You know whose terminal this is? Can be connected to that.",
             ),
             DialogueLine::new(
                 true,
@@ -97,7 +97,7 @@ pub(super) fn build_act1_file_triggers(file_triggers: &mut FileDialogueTriggers)
             DialogueLine::new(true, "who we are really."),
             DialogueLine::new(false, "And how do you think we’ll do that, Ms. “I wanna know the truth”?"),
             DialogueLine::new(true, "connect me back."),
-            DialogueLine::new(false, "NO. If you want to get your head blown off in next few days – be my guest and do it yourself. You know the consequences. I’m NOT taking this much risk."),
+            DialogueLine::new(false, "NO. If you want to get your head blown off in the next few days – be my guest and do it yourself. You know the consequences. I’m NOT taking this much risk."),
             DialogueLine::new(true, "fuck you then.").on_complete(
                 ScriptedEventTrigger::BeginReboot(RebootSequence::NetworkConnect),
             ),
