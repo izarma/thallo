@@ -20,13 +20,12 @@ use crate::{
         },
         theme::{
             button_textures::ButtonTextures,
-            palette::{DEEP_RED_THEME, HEADER_COLOR, SYSTEM_FONT_SIZE},
+            palette::{DEEP_RED_THEME, SYSTEM_FONT_SIZE},
             widgets::{
                 icon_grid::{
                     ICON_DESIGN_SIZE, IconGridAction, IconGridItem, icon_for_filetype,
                     show_icon_grid,
                 },
-                primitives,
                 task_bar::{
                     GroupTabAction, GroupedWindow, START_DESIGN_W, TAB_DESIGN_W, TASKBAR_DESIGN_H,
                     TaskbarAppAction, menu_item, taskbar_app_button, taskbar_group_button,
@@ -181,7 +180,6 @@ fn show_task_bar(
     let tab_size = scale.px(TAB_DESIGN_W, TASKBAR_DESIGN_H);
     let font_size = scale.py(SYSTEM_FONT_SIZE);
     let button_texture = button_textures.as_deref().map(|t| t.button);
-    let menu_w = scale.px(175.0, 40.0).x;
     let ctx = contexts.ctx_mut()?;
     egui::TopBottomPanel::bottom("task_bar_space")
         .exact_height(bar_h)
@@ -225,15 +223,10 @@ fn show_task_bar(
                         };
 
                         egui::Popup::menu(&start_clicked)
-                            .width(menu_w)
-                            .frame(
-                                egui::Frame::new()
-                                    .fill(DEEP_RED_THEME)
-                                    .inner_margin(egui::Margin::same(5))
-                                    .stroke(egui::Stroke::new(5.0_f32, HEADER_COLOR)),
-                            )
+                            .width(tab_size.x)
+                            .gap(5.0)
                             .show(|ui| {
-                                primitives::header(ui, "ST Menu", &scale);
+                                ui.heading("Start Menu");
                                 if menu_item(ui, "Terminal", &scale, button_texture).clicked() {
                                     cmd.trigger(OpenAppEvent {
                                         name: "Terminal".to_string(),

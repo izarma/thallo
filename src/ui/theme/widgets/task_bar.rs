@@ -163,6 +163,7 @@ pub fn taskbar_group_button(
     egui::Popup::menu(&response)
         .id(response.id.with("group_popup"))
         .width(tab_size.x)
+        .gap(5.0)
         .frame(egui::Frame::NONE)
         .show(|ui| {
             ui.set_min_width(tab_size.x);
