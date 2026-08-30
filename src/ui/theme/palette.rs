@@ -8,11 +8,10 @@ pub const BUTTON_BG: Color32 = Color32::from_rgb(50, 50, 60);
 pub const BUTTON_HOVERED_BG: Color32 = Color32::from_rgb(230, 70, 85);
 pub const BUTTON_ACTIVE_BG: Color32 = Color32::from_rgb(90, 90, 110);
 pub const COLOR_DONE: Color32 = Color32::from_rgb(80, 200, 120);
-pub const COLOR_DONE_FILL: Color32 = Color32::from_rgb(60, 200, 100);
-pub const COLOR_PROGRESS_BORDER: Color32 = Color32::from_rgb(100, 100, 120);
 pub const CHATBOX_ANON: Color32 = Color32::from_rgb(200, 80, 80);
 pub const DEEP_RED_THEME: Color32 = Color32::from_rgb(30, 5, 5);
 pub const RED_CONTRAST_THEME: Color32 = Color32::from_rgb(210, 160, 160);
+pub const RED_CONTRAST_THEME2: Color32 = Color32::from_rgb(210, 90, 90);
 pub const DECRYPT_THEME: Color32 = Color32::from_rgb(80, 200, 110);
 pub const RIPPER_THEME: Color32 = Color32::from_rgb(80, 160, 200);
 

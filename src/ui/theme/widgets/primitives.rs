@@ -2,8 +2,8 @@ use bevy_egui::egui;
 
 use crate::engine::design_scale::DesignScale;
 use crate::ui::theme::palette::{
-    COLOR_DONE, COLOR_DONE_FILL, COLOR_PROGRESS_BORDER, CONTENT_FONT_SIZE, HEADER_COLOR,
-    HEADING_FONT_SIZE, LABEL_COLOR, apply_button_theme,
+    CONTENT_FONT_SIZE, HEADER_COLOR, HEADING_FONT_SIZE, LABEL_COLOR, RED_CONTRAST_THEME,
+    RED_CONTRAST_THEME2, apply_button_theme,
 };
 
 /// Wraps `body` in a vertically-and-horizontally centred [`egui::CentralPanel`]
@@ -98,6 +98,11 @@ const BUTTON_HOVER_UV: egui::Rect = egui::Rect::from_min_max(
 const BUTTON_PRESSED_UV: egui::Rect =
     egui::Rect::from_min_max(egui::pos2(BUTTON_FRAME_W * 2.0, 0.0), egui::pos2(1.0, 1.0));
 
+/// Native design size of one frame of `ui/button.png`.
+const BUTTON_NATIVE_SIZE: egui::Vec2 = egui::vec2(175.0, 40.0);
+/// Width of the rounded cap at each end of the button, in asset pixels.
+const BUTTON_CAP_W: f32 = 20.0;
+
 /// Picks the sprite-sheet frame for the given interaction state.  A `selected`
 /// toggle keeps the Pressed frame until the pointer interacts with it again.
 fn button_uv(response: &egui::Response, selected: bool) -> egui::Rect {
@@ -122,6 +127,59 @@ fn paint_button_frame(
 ) {
     if let Some(texture) = texture {
         ui.painter().image(texture, rect, uv, egui::Color32::WHITE);
+    } else {
+        // Fallback while the asset is still loading.
+        apply_button_theme(ui);
+        ui.painter().rect_filled(
+            rect,
+            egui::CornerRadius::same(40),
+            ui.visuals().widgets.inactive.weak_bg_fill,
+        );
+    }
+}
+
+/// Draws a horizontally-stretched button frame into `rect`, keeping the rounded
+/// caps at the native aspect and stretching the centre.  Falls back to a
+/// themed rounded rect while the asset is still loading.
+fn paint_sliced_button_frame(
+    ui: &mut egui::Ui,
+    rect: egui::Rect,
+    texture: Option<egui::TextureId>,
+    uv: egui::Rect,
+) {
+    if let Some(texture) = texture {
+        // Scale the cap width with the target height so the ends keep their
+        // original 20:40 proportions.
+        let cap_w = (rect.height() * (BUTTON_CAP_W / BUTTON_NATIVE_SIZE.y))
+            .min(rect.width() * 0.5)
+            .max(0.0);
+        let uv_cap = (BUTTON_CAP_W / BUTTON_NATIVE_SIZE.x) * uv.width();
+
+        let left_uv = egui::Rect::from_min_max(uv.min, egui::pos2(uv.min.x + uv_cap, uv.max.y));
+        let right_uv = egui::Rect::from_min_max(egui::pos2(uv.max.x - uv_cap, uv.min.y), uv.max);
+        let mid_uv = egui::Rect::from_min_max(
+            egui::pos2(uv.min.x + uv_cap, uv.min.y),
+            egui::pos2(uv.max.x - uv_cap, uv.max.y),
+        );
+
+        let left_rect = egui::Rect::from_min_size(rect.min, egui::vec2(cap_w, rect.height()));
+        let right_rect = egui::Rect::from_min_size(
+            egui::pos2(rect.max.x - cap_w, rect.min.y),
+            egui::vec2(cap_w, rect.height()),
+        );
+        let mid_rect = egui::Rect::from_min_max(
+            egui::pos2(rect.min.x + cap_w, rect.min.y),
+            egui::pos2(rect.max.x - cap_w, rect.max.y),
+        );
+
+        ui.painter()
+            .image(texture, left_rect, left_uv, egui::Color32::WHITE);
+        if mid_rect.width() > 0.0 {
+            ui.painter()
+                .image(texture, mid_rect, mid_uv, egui::Color32::WHITE);
+        }
+        ui.painter()
+            .image(texture, right_rect, right_uv, egui::Color32::WHITE);
     } else {
         // Fallback while the asset is still loading.
         apply_button_theme(ui);
@@ -168,6 +226,42 @@ pub fn button(
     response
 }
 
+/// A variable-width button rendered with the `ui/button.png` three-frame sprite.
+/// The rounded caps keep their native 20:40 proportions and the centre is
+/// stretched to fill `size`.  `text_color` is used for the idle state; the text
+/// turns black while hovered.
+pub fn sliced_button(
+    ui: &mut egui::Ui,
+    text: impl Into<String>,
+    size: egui::Vec2,
+    font_size: f32,
+    text_color: egui::Color32,
+    texture: Option<egui::TextureId>,
+) -> egui::Response {
+    let text = text.into();
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
+
+    if ui.is_rect_visible(rect) {
+        paint_sliced_button_frame(ui, rect, texture, button_uv(&response, false));
+
+        let color = if response.hovered() {
+            egui::Color32::BLACK
+        } else {
+            text_color
+        };
+
+        ui.painter().text(
+            rect.center(),
+            egui::Align2::CENTER_CENTER,
+            text,
+            egui::FontId::proportional(font_size),
+            color,
+        );
+    }
+
+    response
+}
+
 /// An icon-only button rendered with a three-frame sprite sheet (Idle, Hovered,
 /// Pressed), e.g. `ui/reveal_button.png` (40 × 40 frames in a 120 × 40 sheet).
 /// The image is drawn at `frame_size` and scaled by [`DesignScale`]; `selected`
@@ -206,7 +300,6 @@ pub fn truncate_label(s: &str, max_chars: usize) -> String {
     }
 }
 
-use crate::ui::theme::palette::BUTTON_HOVERED_BG;
 use bevy_egui::egui::Color32;
 
 pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32, height: f32) {
@@ -216,11 +309,11 @@ pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32, height: f32) {
     let (outer, _) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::hover());
     let p = ui.painter();
 
-    // Border — green when done, grey-blue otherwise
+    // Border — deep red when done, contrast red while in progress
     let border = if done {
-        COLOR_DONE
+        RED_CONTRAST_THEME
     } else {
-        COLOR_PROGRESS_BORDER
+        RED_CONTRAST_THEME2
     };
     p.rect_filled(outer, egui::CornerRadius::same(3), border);
 
@@ -232,12 +325,12 @@ pub fn progress_bar(ui: &mut egui::Ui, progress: f32, width: f32, height: f32) {
         Color32::from_rgb(14, 14, 22),
     );
 
-    // Fill
+    // Fill — deep red when done, contrast red while in progress
     if progress > 0.0 {
         let fill = if done {
-            COLOR_DONE_FILL
+            RED_CONTRAST_THEME2
         } else {
-            BUTTON_HOVERED_BG
+            RED_CONTRAST_THEME
         };
         let fill_rect = egui::Rect::from_min_size(
             inner.min,
