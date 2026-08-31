@@ -94,6 +94,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # The video tests read assets/cutscenes/*.mp4, which are tracked
+          # with Git LFS. Without this the checkout only contains the LFS
+          # pointer files and ffmpeg fails to decode them.
+          lfs: true
 
       - name: Restore Rust cache
         id: cache
