@@ -227,12 +227,10 @@ pub fn show_icon_grid(
                                     ui.ctx().request_repaint();
                                 }
 
-                                if resp.clicked() {
-                                    if is_selected {
-                                        action = IconGridAction::Opened(item.id.clone());
-                                    } else {
-                                        action = IconGridAction::Selected(item.id.clone());
-                                    }
+                                if resp.double_clicked() {
+                                    action = IconGridAction::Opened(item.id.clone());
+                                } else if resp.clicked() {
+                                    action = IconGridAction::Selected(item.id.clone());
                                 }
 
                                 if is_selected {

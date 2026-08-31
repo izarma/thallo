@@ -28,7 +28,7 @@ fn main() {
     ))
     // this turns into the default background color
     .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
-    .add_systems(Startup, (setup_camera, spawn_cursor));
+    .add_systems(Startup, (setup_camera, spawn_cursor, setup_egui_input));
 
     #[cfg(feature = "dev")]
     app.add_plugins(devtools::plugin);
@@ -85,4 +85,10 @@ fn spawn_cursor(
     });
 
     current.handle = assets.load("ui/cursors/cursor.png");
+}
+
+fn setup_egui_input(mut contexts: bevy_egui::EguiContexts) {
+    if let Ok(ctx) = contexts.ctx_mut() {
+        ctx.options_mut(|opt| opt.input_options.max_double_click_delay = 0.5);
+    }
 }
