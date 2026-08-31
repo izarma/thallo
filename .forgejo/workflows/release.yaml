@@ -100,9 +100,13 @@ jobs:
           - platform: windows
             binary_ext: .exe
             package_ext: .zip
+            features: ""
 
           - platform: linux
             package_ext: .zip
+            # Statically link FFmpeg so the Linux binary does not depend on the
+            # end-user's system FFmpeg version.
+            features: "static-ffmpeg"
 
     runs-on: bevy0.18
     permissions:

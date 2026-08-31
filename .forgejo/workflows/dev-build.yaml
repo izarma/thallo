@@ -64,9 +64,13 @@ jobs:
           - platform: windows
             binary_ext: .exe
             package_ext: .zip
+            features: ""
 
           - platform: linux
             package_ext: .zip
+            # Statically link FFmpeg so the Linux binary does not depend on the
+            # end-user's system FFmpeg version.
+            features: "static-ffmpeg"
 
     runs-on: bevy0.18
     defaults:
@@ -158,7 +162,7 @@ jobs:
       - name: Build and add binaries to app
         run: |
           target='${{ env.rust_target }}'
-          bevy build --locked --target="${target}"
+          bevy build --locked --target="${target}" --features='${{ matrix.features }}'
           mv target/"${target}"/debug/'${{ env.cargo_build_binary_name }}${{ matrix.binary_ext }}' tmp/binary/"${target}"'${{ matrix.binary_ext }}'
           mv tmp/binary/*'${{ matrix.binary_ext }}' '${{ env.app }}/${{ env.app_binary_name }}${{ matrix.binary_ext }}'
 

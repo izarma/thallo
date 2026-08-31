@@ -27,6 +27,11 @@ serde_json = "1.0"
 [features]
 default = ["dev"]
 dev = ["dep:bevy-inspector-egui"]
+# Statically build and link FFmpeg into the Linux binary. This eliminates the
+# runtime dependency on the system's FFmpeg shared libraries and avoids version
+# mismatches on end-user machines. Enabled only for Linux release/dev builds
+# in CI; local development and CI tests continue to use the system's FFmpeg.
+static-ffmpeg = ["ffmpeg-next/static", "ffmpeg-next/build"]
 
 [package.metadata.bevy_cli.release]
 # Disable dev features for release builds.
