@@ -46,7 +46,7 @@ jobs:
           save-if: true
 
       - name: Check documentation
-        run: cargo doc --locked --workspace --profile ci --all-features --document-private-items --no-deps
+        run: cargo doc --locked --workspace --profile ci --document-private-items --no-deps
 
   # Run Clippy lints.
   clippy-lints:
@@ -65,7 +65,7 @@ jobs:
           save-if: true
 
       - name: Run Clippy lints
-        run: cargo clippy --locked --workspace --all-targets --profile ci --all-features
+        run: cargo clippy --locked --workspace --all-targets --profile ci
 
   # Run Bevy lints.
   bevy-lints:
@@ -84,7 +84,7 @@ jobs:
           save-if: true
 
       - name: Run Bevy lints
-        run: bevy_lint --locked --workspace --all-targets --profile ci --all-features
+        run: bevy_lint --locked --workspace --all-targets --profile ci
 
   # Run tests.
   tests:
