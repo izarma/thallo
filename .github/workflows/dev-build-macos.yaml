@@ -1,0 +1,204 @@
+name: Dev Build (macOS)
+
+on:
+  # Trigger this workflow automatically on every push to `main`.
+  push:
+    branches: [main]
+
+# Cancel the dev build workflow when a more recent workflow begins.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+# Configure the dev build workflow by editing the following values.
+env:
+  # The base filename of the binary produced by `cargo build`.
+  cargo_build_binary_name: thallo
+
+  # The path to the assets directory.
+  assets_path: assets
+
+  # The itch.io project to deploy to in the format `user-name/project-name`.
+  # There will be no deployment to itch.io if this is commented out.
+  itch_page: izarma/thallo
+
+  # The base filename of the binary in the package produced by this workflow.
+  # Defaults to `cargo_build_binary_name` if commented out.
+  #app_binary_name: thallo
+
+  # The name of the `.app` bundle and `.dmg` file produced by this workflow.
+  # Defaults to `app_binary_name` if commented out.
+  #app_package_name: thallo
+
+  # Before enabling LFS, please take a look at GitHub's documentation for costs and quota limits:
+  # <https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-storage-and-bandwidth-usage>
+  git_lfs: true
+
+jobs:
+  # Determine the version number for this workflow.
+  get-version:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          # Match the toolchain baked into the `bevy0.18` Forgejo runner image.
+          toolchain: nightly-2026-01-22
+
+      - name: Determine version number
+        id: version
+        # Fall back to the Cargo.toml version.
+        run: |
+          echo "version=$(cargo pkgid | sed 's/.*#//')" >> "${GITHUB_OUTPUT}"
+
+  # Build and package a dev build for macOS.
+  build-dev-macos:
+    needs:
+      - get-version
+    env:
+      version: ${{ needs.get-version.outputs.version }}
+      # Avoid rate-limiting. See: <https://github.com/cargo-bins/cargo-binstall/issues/2045>.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - name: Set up environment
+        run: |
+          # Default values:
+          echo "app_binary_name=${app_binary_name:=${{ env.cargo_build_binary_name }}}" >> "${GITHUB_ENV}"
+          echo "app_package_name=${app_package_name:=${app_binary_name}}" >> "${GITHUB_ENV}"
+
+          # File paths:
+          echo "app_bundle=tmp/app/${app_package_name}-dev.app" >> "${GITHUB_ENV}"
+          echo "app=tmp/app/${app_package_name}-dev.app/Contents/MacOS" >> "${GITHUB_ENV}"
+          echo "package=${app_package_name}-dev-macos.dmg" >> "${GITHUB_ENV}"
+
+          # Rustflags:
+          echo 'RUSTFLAGS=-Zthreads=0 -Zshare-generics=y' >> "${GITHUB_ENV}"
+
+          # macOS environment:
+          echo 'MACOSX_DEPLOYMENT_TARGET=11.0' >> "${GITHUB_ENV}"
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
+
+          # Dev builds are always deployed to itch.io when `itch_page` is configured.
+          echo 'is_itch_enabled=${{ env.itch_page != '' }}' >> "${GITHUB_ENV}"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: ${{ env.git_lfs }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          # Match the toolchain baked into the `bevy0.18` Forgejo runner image.
+          toolchain: nightly-2026-01-22
+          targets: aarch64-apple-darwin
+
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: dev-macos
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install macOS dependencies
+        # `ffmpeg-next` links against the Homebrew FFmpeg libraries for dev builds.
+        # End users will need FFmpeg installed unless you switch to the
+        # `static-ffmpeg` feature (slower to build).
+        run: |
+          brew update
+          brew install ffmpeg
+
+      - name: Install Bevy CLI
+        run: |
+          cargo install --git https://github.com/TheBevyFlock/bevy_cli \
+            --tag cli-v0.1.0-alpha.2 --locked bevy_cli
+
+      - name: Prepare output directories
+        run: rm -rf tmp; mkdir -p '${{ env.app }}'
+
+      - name: Build and add binary to app
+        run: |
+          bevy build --locked --target aarch64-apple-darwin
+          mv target/aarch64-apple-darwin/debug/'${{ env.cargo_build_binary_name }}' \
+            '${{ env.app }}/${{ env.app_binary_name }}'
+
+      - name: Add assets to app
+        run: cp -R ./'${{ env.assets_path }}' '${{ env.app }}' || true
+
+      - name: Add metadata to app
+        run: |
+          cat >'${{ env.app }}/../Info.plist' <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+            <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>en</string>
+              <key>CFBundleExecutable</key>
+              <string>${{ env.app_binary_name }}</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.izarma.thallo</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>${{ env.app_package_name }}</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${{ env.version }}</string>
+              <key>CFBundleVersion</key>
+              <string>${{ env.version }}</string>
+              <key>CFBundleSupportedPlatforms</key>
+              <array>
+                <string>MacOSX</string>
+              </array>
+            </dict>
+          </plist>
+          EOF
+
+      - name: Package app
+        working-directory: tmp/app
+        run: |
+          ln -s /Applications .
+          hdiutil create -fs HFS+ -volname '${{ env.app_package_name }}-dev' \
+            -srcfolder . '${{ env.package }}'
+
+      - name: Cache butler
+        if: ${{ env.is_itch_enabled == 'true' }}
+        id: butler-cache
+        uses: actions/cache@v4
+        with:
+          path: butler
+          key: butler-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Download butler
+        if: ${{ env.is_itch_enabled == 'true' && steps.butler-cache.outputs.cache-hit != 'true' }}
+        run: |
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) BUTLER_ARCH="darwin-amd64" ;;
+            arm64) BUTLER_ARCH="darwin-arm64" ;;
+            *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+          esac
+          curl -L -o butler.zip "https://broth.itch.zone/butler/${BUTLER_ARCH}/LATEST/archive/default"
+          unzip butler.zip
+          chmod +x butler
+
+      - name: Push to itch.io
+        if: ${{ env.is_itch_enabled == 'true' }}
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
+        run: |
+          chmod +x butler
+          ./butler -V
+          ./butler push \
+            --fix-permissions \
+            --userversion='${{ needs.get-version.outputs.version }}' \
+            '${{ env.app_bundle }}' \
+            '${{ env.itch_page }}:macos-dev'
