@@ -1,12 +1,12 @@
 use std::{
     collections::HashMap,
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use bevy::{
-    asset::RenderAssetUsages,
+    asset::{RenderAssetUsages, io::file::FileAssetReader},
     audio::{AddAudioSource, AudioPlayer, Decodable, PlaybackSettings, Source},
     prelude::*,
     render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages},
@@ -222,6 +222,10 @@ impl Decodable for VideoAudioSource {
 ///
 /// The caller is responsible for inserting any display components and for
 /// despawning the entity when playback should stop.
+fn resolve_video_path(path: &str) -> PathBuf {
+    FileAssetReader::get_base_path().join(path)
+}
+
 pub fn spawn_video_player(
     commands: &mut Commands,
     images: &mut Assets<Image>,
@@ -231,12 +235,13 @@ pub fn spawn_video_player(
     loop_video: bool,
     with_audio: bool,
 ) -> Option<(Entity, Handle<Image>)> {
-    let data = VideoPlayerData::new(path)
-        .inspect_err(|err| error!("Failed to load video {path}: {err}"))
+    let resolved_path = resolve_video_path(path);
+    let data = VideoPlayerData::new(&resolved_path)
+        .inspect_err(|err| error!("Failed to load video {}: {err}", resolved_path.display()))
         .ok()?;
 
     let audio_handle = if with_audio {
-        match decode_audio(Path::new(path)) {
+        match decode_audio(&resolved_path) {
             Ok(Some(source)) => Some(audio_sources.add(source)),
             Ok(None) => None,
             Err(err) => {
