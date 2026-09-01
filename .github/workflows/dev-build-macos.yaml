@@ -103,16 +103,20 @@ jobs:
       - name: Restore Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: dev-macos
+          # Bumped so cached ffmpeg-next artifacts are rebuilt against ffmpeg@7.
+          shared-key: dev-macos-ffmpeg7
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install macOS dependencies
-        # `ffmpeg-next` links against the Homebrew FFmpeg libraries for dev builds.
+        # `ffmpeg-next` 8.1 is not compatible with the FFmpeg 9.x that Homebrew
+        # currently ships as `ffmpeg`, so pin the dev build to `ffmpeg@7`.
         # End users will need FFmpeg installed unless you switch to the
         # `static-ffmpeg` feature (slower to build).
         run: |
           brew update
-          brew install ffmpeg
+          brew install ffmpeg@7
+          echo "PKG_CONFIG_PATH=$(brew --prefix ffmpeg@7)/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+          echo "FFMPEG_DIR=$(brew --prefix ffmpeg@7)" >> "$GITHUB_ENV"
 
       - name: Install Bevy CLI
         run: |
