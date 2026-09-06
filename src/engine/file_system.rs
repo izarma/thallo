@@ -134,7 +134,7 @@ impl FsNode {
     /// Try to unlock with a password. Returns Ok(()) on success.
     pub fn try_unlock_password(&mut self, input: &str) -> Result<(), FsError> {
         match &self.meta.locked {
-            Some(LockType::Password(pw)) if pw == input => {
+            Some(LockType::Password(pw)) if pw.eq_ignore_ascii_case(input) => {
                 self.meta.locked = None;
                 Ok(())
             }

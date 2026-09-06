@@ -56,13 +56,19 @@ fn build_fs(act1_unlocked: bool) -> FsHierarchy {
     desktop
         .push_child(FsNode::text_file(
             "incident_report.txt",
-            "INCIDENT REPORT\nSector: Agricultural (7A)\nCompiled by: Sr. Technician P. Lefevre\nDate: 14.03.2189\nIncident №: 7714\n\nSummary: At 22:40 ship time during routine check of sector 7B, an extraneous sound (low-frequency hum) was detected. Source could not be visually or audibly identified. Sound lasted approximately 45 seconds, then ceased.\n\nActions taken:\n1. Visual inspection of sector – negative, yielded no results.\n2. Check of communications and ventilation systems — no deviations.\n3. Inquiry to adjacent sectors (7B, 7C) — no similar complaints received.\n\nConclusion: Presumed acoustic defect in ventilation system or an unexpected error in reporting party's auditory equipment. Incident dismissed.\n\nAttachment: audio recording of attempted hum capture:\n[FILE UNAVAILABLE]",
+            "INCIDENT REPORT\nSector: Agricultural (7A)\nCompiled by: Sr. Technician P. Lefevre\nDate: 14.03.2189\nIncident №: 7714\n\nSummary: At 22:40 ship time during routine check of sector 7B, an extraneous sound (low-frequency hum) was detected. Source could not be visually or audibly identified. Sound lasted approximately 45 seconds, then ceased.\n\nActions taken:\n1. Visual inspection of sector – negative, yielded no results.\n2. Check of communications and ventilation systems — no deviations.\n3. Inquiry to adjacent sectors (7A, 7C) — no similar complaints received.\n\nConclusion: Presumed acoustic defect in ventilation system or an unexpected error in reporting party's auditory equipment. Incident dismissed.\n\nAttachment: audio recording of attempted hum capture:\n[FILE UNAVAILABLE — DATA RECOVERY PARTIAL]\n\nRecovered fragment (auto-transcription, low confidence):\n- .... . / - --- -- -...",
         ))
         .ok();
     desktop
         .push_child(FsNode::text_file(
             "report_fertilizer_consumption_q1_2189.txt",
             "Period: 01.01.2189 - 31.03.2189\nCompiled by: Jr. Technician P. Dupont (Sector 7A)\n\nFertilizer consumption for the reporting period exceeded planned targets by 12.7%. Suspected cause: increased metabolic rate in experimental wheat samples following lighting adjustment.\n\nAttachment 1: weekly consumption chart.\nAttachment 2: comparative growth analysis (current cycle vs. 2187 baseline).\nNote: Access to samples for additional testing requires clearance from Sector B checkpoint.",
+        ))
+        .ok();
+    desktop
+        .push_child(FsNode::text_file(
+            "morse_code_cypher.txt",
+            "FIELD CIPHER CARD — SHIPBOARD EMERGENCY CODE\nDot = short pulse. Dash = long pulse. Pause between letters.\n\nA .-     B -...   C -.-.   D -..    E .\nF ..-.   G --.    H ....   I ..     J .---\nK -.-    L .-..   M --     N -.     O ---\nP .--.   Q --.-   R .-.    S ...    T -\nU ..-    V ...-   W .--    X -..-   Y -.--\nZ --..",
         ))
         .ok();
     // Personal Folder
@@ -105,7 +111,7 @@ fn build_personal_folder(unlocked: bool) -> FsNode {
     let mut personal_folder = if unlocked {
         FsNode::folder("Personal")
     } else {
-        FsNode::password_folder("Personal", "7714")
+        FsNode::password_folder("Personal", "the tomb")
     };
     personal_folder
         .push_child(FsNode::text_file("collective_complaint.txt", "TO: Administrator Makarov\nFROM: French Contingent Representative, Lieutenant J. Moreau\nDATE: 16.03.2189\nSUBJECT: Anomalous source of sound.\n\nI hereby report that over the past two weeks, 7 (seven) instances of low-frequency hum have been recorded in living and working areas assigned to the French contingent. The sound is not detected by standard instruments, yet is subjectively perceived by crew members, causing headaches, irritability, and sleep disruption.\n\nGiven that no similar complaints have been received from the Soviet part of the crew, I request clarification on the following:\n\n1. Is this hum a technical feature of equipment located in Soviet sectors?\n2. Is it related to the operation of synthetic modules (MK-II and above)?\n3. Will measures be taken to shield against or reduce exposure to the human part of the crew?\n\nAwaiting official response.\n\n\n- J. Moreau"))
